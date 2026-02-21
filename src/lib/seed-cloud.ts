@@ -1,0 +1,41 @@
+import { createClient } from '@supabase/supabase-js';
+import bcrypt from 'bcryptjs';
+import dotenv from 'dotenv';
+dotenv.config();
+
+const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+async function seedAdmin() {
+    console.log('🌱 Seeding Admin User...');
+
+    const hash = bcrypt.hashSync('password123', 10);
+
+    const sql = `
+    -- Ensure roles exist
+    INSERT INTO roles (name, description) VALUES 
+      ('admin', 'Full control'), ('manager', 'Team management'), 
+      ('accounts', 'Finance'), ('salesperson', 'Sales')
+    ON CONFLICT (name) DO NOTHING;
+
+    -- Create/Update Admin
+    DELETE FROM users WHERE email = 'admin@company.com';
+    INSERT INTO users (email, password_hash, full_name, role_id) 
+    SELECT 'admin@company.com', '${hash}', 'Admin User', id 
+    FROM roles WHERE name = 'admin';
+  `;
+
+    const { error } = await supabase.rpc('exec_sql', { sql_query: sql });
+
+    if (error) {
+        console.error('❌ Seeding Failed:', error.message);
+    } else {
+        console.log('✅ Admin user created successfully!');
+        console.log('📧 Login: admin@company.com');
+        console.log('🔑 Password: password123');
+    }
+}
+
+seedAdmin();

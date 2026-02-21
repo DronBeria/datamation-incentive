@@ -1,0 +1,515 @@
+"use client";
+
+import { useEffect, useState, useMemo } from "react";
+import { useAuth } from "@/lib/auth-context";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { toast } from "sonner";
+import {
+  Plus, Loader2, Search, MoreHorizontal, Edit2, Trash2,
+  Users, Shield, UserCheck, UserX, Download, Sparkles, LayoutGrid,
+  Mail, MapPin, Building2, ChevronRight, ArrowRight,
+  Activity, Clock, Target, TrendingUp
+} from "lucide-react";
+import { downloadCSV } from "@/lib/export-utils";
+
+const ROLE_CONFIG: Record<string, { label: string; class: string; dot: string }> = {
+  admin: { label: "Admin", class: "bg-blue-50 text-blue-600 border-none", dot: "bg-blue-400" },
+  manager: { label: "Manager", class: "bg-indigo-50 text-indigo-600 border-none", dot: "bg-indigo-400" },
+  accounts: { label: "Accounts", class: "bg-cyan-50 text-cyan-600 border-none", dot: "bg-cyan-400" },
+  salesperson: { label: "Salesperson", class: "bg-emerald-50 text-emerald-600 border-none", dot: "bg-emerald-500" },
+};
+
+const ROLE_ICONS: Record<string, React.ElementType> = {
+  admin: Shield,
+  manager: UserCheck,
+  accounts: Building2,
+  salesperson: Users,
+};
+
+const ROLE_IDS: Record<string, string> = {
+  admin: "1", manager: "2", accounts: "3", salesperson: "4",
+};
+
+const USERS_CSV_COLUMNS = [
+  { key: "full_name", label: "Name" },
+  { key: "email", label: "Email" },
+  { key: "role", label: "Role" },
+  { key: "department", label: "Department" },
+  { key: "scheme_name", label: "Scheme" },
+  { key: "is_active", label: "Active" },
+];
+
+export default function UsersPage() {
+  const { user: currentUser } = useAuth();
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [showModal, setShowModal] = useState(false);
+  const [modalMode, setModalMode] = useState<"create" | "edit">("create");
+  const [submitting, setSubmitting] = useState(false);
+  const [schemes, setSchemes] = useState<any[]>([]);
+  const [form, setForm] = useState({
+    id: "", email: "", password: "", full_name: "", role_id: "4",
+    department: "", scheme_id: "", manager_id: "", is_active: true,
+  });
+
+  const fetchUsers = () => {
+    setLoading(true);
+    fetch("/api/users").then(r => r.json()).then(d => {
+      if (Array.isArray(d)) setUsers(d);
+    }).finally(() => setLoading(false));
+  };
+
+  const fetchSchemes = () => {
+    fetch("/api/schemes").then(r => r.json()).then(d => {
+      if (Array.isArray(d)) setSchemes(d);
+    });
+  };
+
+  useEffect(() => { fetchUsers(); fetchSchemes(); }, []);
+
+  const openCreate = () => {
+    setModalMode("create");
+    setForm({ id: "", email: "", password: "", full_name: "", role_id: "4", department: "", scheme_id: "", manager_id: "", is_active: true });
+    setShowModal(true);
+  };
+
+  const openEdit = (u: any) => {
+    setModalMode("edit");
+    setForm({
+      id: u.id, email: u.email, password: "", full_name: u.full_name,
+      role_id: ROLE_IDS[u.role] || "4",
+      department: u.department || "",
+      scheme_id: schemes.find(s => s.name === u.scheme_name)?.id?.toString() || "",
+      manager_id: u.manager_id?.toString() || "",
+      is_active: !!u.is_active,
+    });
+    setShowModal(true);
+  };
+
+  const handleSubmit = async () => {
+    if (!form.email || !form.full_name || (modalMode === "create" && !form.password)) {
+      toast.error("Required fields missing"); return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/users", {
+        method: modalMode === "create" ? "POST" : "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          role_id: parseInt(form.role_id),
+          scheme_id: form.scheme_id ? parseInt(form.scheme_id) : null,
+          manager_id: form.manager_id ? parseInt(form.manager_id) : null
+        }),
+      });
+      if (res.ok) {
+        toast.success(modalMode === "create" ? "Team member indexed" : "Profile updated");
+        setShowModal(false); fetchUsers();
+      }
+    } catch { toast.error("Operation failed"); }
+    finally { setSubmitting(false); }
+  };
+
+  const handleDelete = async (id: string, role: string) => {
+    try {
+      const res = await fetch(`/api/users?id=${id}&role=${role}`, { method: "DELETE" });
+      if (res.ok) { toast.success("Access status toggled"); fetchUsers(); }
+    } catch { toast.error("Operation failed"); }
+  };
+
+  const filtered = useMemo(() => {
+    return users.filter(u => {
+      const matchSearch = u.full_name.toLowerCase().includes(search.toLowerCase()) ||
+        u.email.toLowerCase().includes(search.toLowerCase()) ||
+        (u.department || "").toLowerCase().includes(search.toLowerCase());
+      const matchRole = roleFilter === "all" || u.role === roleFilter;
+      const matchStatus = statusFilter === "all" || (statusFilter === "active" ? u.is_active : !u.is_active);
+      return matchSearch && matchRole && matchStatus;
+    });
+  }, [users, search, roleFilter, statusFilter]);
+
+  const stats = useMemo(() => ({
+    total: users.length,
+    active: users.filter(u => u.is_active).length,
+    salesperson: users.filter(u => u.role === "salesperson").length,
+    inactive: users.filter(u => !u.is_active).length,
+  }), [users]);
+
+  const handleExport = () => {
+    if (!filtered.length) return toast.error("No data available");
+    downloadCSV(filtered.map(u => ({ ...u, is_active: u.is_active ? "Yes" : "No" })), "team_directory", USERS_CSV_COLUMNS);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-heading text-slate-900 tracking-tight">Team Management</h1>
+          <p className="text-sm text-slate-500 mt-1">Manage user access, roles and associated incentive schemes.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button onClick={handleExport} variant="outline" className="h-10 px-4 rounded-xl text-xs font-semibold text-slate-600 border-slate-200">
+            <Download className="h-3.5 w-3.5 mr-2" /> Export
+          </Button>
+          <Button onClick={openCreate} className="bg-blue-600 hover:bg-blue-700 h-10 px-4 font-semibold text-white text-xs rounded-xl shadow-sm transition-all flex items-center gap-2">
+            <Plus className="h-4 w-4" /> Add Member
+          </Button>
+        </div>
+      </div>
+
+      {/* KPI Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: "Total Users", value: stats.total, icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
+          { label: "Active", value: stats.active, icon: UserCheck, color: "text-emerald-600", bg: "bg-emerald-50" },
+          { label: "Sales Team", value: stats.salesperson, icon: Sparkles, color: "text-indigo-600", bg: "bg-indigo-50" },
+          { label: "Inactive", value: stats.inactive, icon: UserX, color: "text-rose-600", bg: "bg-rose-50" },
+        ].map((s, i) => (
+          <Card key={i} className="p-5 border border-slate-100 shadow-sm bg-white rounded-2xl group relative overflow-hidden transition-all hover:shadow-md">
+            <div className="relative z-10">
+              <div className={`h-10 w-10 rounded-xl ${s.bg} flex items-center justify-center mb-3 transition-transform group-hover:scale-110 shadow-sm border border-slate-100/50`}>
+                <s.icon className={`h-5 w-5 ${s.color}`} />
+              </div>
+              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest leading-none mb-2">{s.label}</p>
+              <p className="text-2xl font-heading text-slate-900 leading-none tracking-tight">{s.value}</p>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      {/* Filters Hub */}
+      <Card className="p-4 border border-slate-100 shadow-sm bg-white rounded-2xl">
+        <div className="flex flex-col xl:flex-row gap-4">
+          <div className="relative flex-[3]">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              placeholder="Search by name, email or department..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="pl-10 h-10 border-slate-100 bg-slate-50/50 rounded-xl text-sm focus-visible:ring-blue-600 shadow-none border"
+            />
+          </div>
+          <div className="flex flex-col sm:flex-row gap-4 flex-2">
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <SelectTrigger className="h-10 border-slate-100 bg-slate-50/50 rounded-xl text-xs font-semibold px-4 flex-1">
+                <SelectValue placeholder="All Roles" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border border-slate-100 shadow-lg p-1 bg-white">
+                <SelectItem value="all" className="rounded-lg text-xs font-medium">All Roles</SelectItem>
+                {Object.keys(ROLE_CONFIG).map(r => (
+                  <SelectItem key={r} value={r} className="rounded-lg text-xs font-medium capitalize">{r}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-10 border-slate-100 bg-slate-50/50 rounded-xl text-xs font-semibold px-4 flex-1">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border border-slate-100 shadow-lg p-1 bg-white">
+                <SelectItem value="all" className="rounded-lg text-xs font-medium">All Status</SelectItem>
+                <SelectItem value="active" className="rounded-lg text-xs font-medium text-emerald-600">Active</SelectItem>
+                <SelectItem value="inactive" className="rounded-lg text-xs font-medium text-rose-600">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </Card>
+
+      {/* Main Directory */}
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600/30" />
+          <p className="text-xs font-semibold text-slate-400">Loading team members...</p>
+        </div>
+      ) : (
+        <Card className="border border-slate-100 shadow-sm bg-white rounded-2xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50/50 border-none">
+                  <TableHead className="py-4 pl-6 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Member</TableHead>
+                  <TableHead className="py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Role</TableHead>
+                  <TableHead className="py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Grouping & Manager</TableHead>
+                  <TableHead className="py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Status</TableHead>
+                  <TableHead className="py-4 pr-6 text-[11px] font-bold text-slate-500 uppercase tracking-widest text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-20">
+                      <div className="flex flex-col items-center gap-3">
+                        <Users className="h-8 w-8 text-slate-200" />
+                        <p className="text-sm font-semibold text-slate-900">No members found</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : filtered.map(u => {
+                  const RoleIcon = ROLE_ICONS[u.role] || Users;
+                  return (
+                    <TableRow key={u.id} className="group hover:bg-slate-50/50 transition-all border-b border-slate-50 last:border-none">
+                      <TableCell className="pl-6 py-4">
+                        <div className="flex items-center gap-3.5">
+                          <div className={`h-10 w-10 rounded-lg ${u.is_active ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-slate-50 text-slate-300 border-slate-100"} border flex items-center justify-center font-bold text-sm shadow-sm transition-all group-hover:bg-white`}>
+                            {u.full_name[0]}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-slate-900 tracking-tight text-sm group-hover:text-blue-600 transition-colors truncate">{u.full_name}</p>
+                            <p className="text-[11px] text-slate-400 truncate opacity-80">{u.email}</p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {(() => {
+                          const cfg = ROLE_CONFIG[u.role] || { label: u.role, class: "bg-slate-50 text-slate-400", dot: "bg-slate-300" };
+                          return (
+                            <Badge variant="outline" className={`text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg border-none shadow-sm flex w-fit items-center gap-1.5 ${cfg.class}`}>
+                              <div className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
+                              {cfg.label}
+                            </Badge>
+                          );
+                        })()}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-xs font-semibold text-slate-700">{u.department || "No Department"}</span>
+                          {u.manager_name && (
+                            <span className="text-[10px] text-slate-400 font-medium italic">Managed by: {u.manager_name}</span>
+                          )}
+                          {u.scheme_name && (
+                            <span className="text-[10px] font-medium text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded w-fit">{u.scheme_name}</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={`text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg border-none shadow-sm flex w-fit items-center gap-1.5 ${u.is_active ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"}`}>
+                          <div className={`h-1.5 w-1.5 rounded-full ${u.is_active ? "bg-emerald-500" : "bg-rose-500"}`} />
+                          {u.is_active ? "Active" : "Inactive"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right pr-6">
+                        {currentUser?.role === "admin" && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-slate-100 rounded-lg">
+                                <MoreHorizontal className="h-4 w-4 text-slate-400" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48 p-1 rounded-xl shadow-lg border border-slate-100 bg-white">
+                              <DropdownMenuItem onClick={() => openEdit(u)} className="h-10 rounded-lg text-xs font-medium text-slate-600 flex items-center gap-2 cursor-pointer focus:bg-slate-50 transition-all">
+                                <Edit2 className="h-3.5 w-3.5" /> Edit Profile
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDelete(u.id, u.role)} className={`h-10 rounded-lg text-xs font-medium flex items-center gap-2 cursor-pointer focus:bg-slate-50 transition-all ${u.is_active ? "text-rose-600" : "text-emerald-600"}`}>
+                                {u.is_active ? (
+                                  <><UserX className="h-3.5 w-3.5" /> Disable User</>
+                                ) : (
+                                  <><UserCheck className="h-3.5 w-3.5" /> Enable User</>
+                                )}
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+          <div className="px-6 py-3 border-t border-slate-50 bg-slate-50/30">
+            <p className="text-[11px] font-semibold text-slate-400 text-right uppercase tracking-widest">{filtered.length} members total</p>
+          </div>
+        </Card>
+      )}
+
+      {/* User Information Dialog */}
+      <Dialog open={showModal} onOpenChange={setShowModal}>
+        <DialogContent className="max-w-[800px] w-[95vw] p-0 overflow-hidden border border-slate-200 shadow-2xl rounded-2xl bg-white">
+          <div className="flex flex-col max-h-[90vh]">
+
+            {/* Header */}
+            <div className="flex items-center gap-4 px-8 py-5 border-b border-slate-100 shrink-0">
+              <div className="h-10 w-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-sm">
+                <Users className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-semibold text-slate-900">
+                  {modalMode === "create" ? "Add Team Member" : "Edit Profile"}
+                </DialogTitle>
+                <p className="text-xs text-slate-400 mt-0.5">Configure access credentials and role permissions for this user.</p>
+              </div>
+            </div>
+
+            {/* Form body */}
+            <div className="overflow-y-auto custom-scrollbar p-8">
+              <div className="space-y-6">
+
+                {/* Row 1: Name + Role */}
+                <div className="grid grid-cols-2 gap-5">
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-slate-700">Full Name <span className="text-red-500">*</span></label>
+                    <Input
+                      value={form.full_name}
+                      onChange={e => setForm({ ...form, full_name: e.target.value })}
+                      placeholder="e.g. John Doe"
+                      className="h-11 border-slate-200 bg-white rounded-lg text-sm font-medium"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-slate-700">System Role <span className="text-red-500">*</span></label>
+                    <Select value={form.role_id || undefined} onValueChange={v => setForm({ ...form, role_id: v })}>
+                      <SelectTrigger className="h-11 border-slate-200 bg-white rounded-lg text-sm font-medium">
+                        <SelectValue placeholder="Select Role" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border-slate-200 shadow-xl bg-white p-1">
+                        {currentUser?.role === "admin" && (
+                          <>
+                            <SelectItem value="1" className="text-sm">Admin</SelectItem>
+                            <SelectItem value="2" className="text-sm">Manager</SelectItem>
+                            <SelectItem value="3" className="text-sm">Accounts</SelectItem>
+                          </>
+                        )}
+                        <SelectItem value="4" className="text-sm">Salesperson</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Row 2: Email */}
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-slate-700">Email Address <span className="text-red-500">*</span></label>
+                  <div className="relative group">
+                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input
+                      type="email"
+                      value={form.email}
+                      onChange={e => setForm({ ...form, email: e.target.value })}
+                      placeholder="john@company.com"
+                      className="h-11 pl-10 border-slate-200 bg-white rounded-lg text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* Row 3: Password + Department */}
+                <div className="grid grid-cols-2 gap-5">
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-slate-700">Password {modalMode === 'create' && <span className="text-red-500">*</span>}</label>
+                    <Input
+                      type="password"
+                      value={form.password}
+                      onChange={e => setForm({ ...form, password: e.target.value })}
+                      placeholder={modalMode === 'edit' ? "Leave empty to keep current" : "Set initial password"}
+                      className="h-11 border-slate-200 bg-white rounded-lg text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-slate-700">Department</label>
+                    <Input
+                      value={form.department}
+                      onChange={e => setForm({ ...form, department: e.target.value })}
+                      placeholder="e.g. Sales, Ops"
+                      className="h-11 border-slate-200 bg-white rounded-lg text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* Performance & Hierarchy Mapping (Salesperson only) */}
+                {form.role_id === "4" && (
+                  <div className="p-5 rounded-xl bg-blue-50/50 border border-blue-100/50 space-y-4">
+                    <p className="text-sm font-semibold text-blue-900">Alignment & Hierarchy</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-slate-600">Active Scheme</label>
+                        <Select value={form.scheme_id || undefined} onValueChange={v => setForm({ ...form, scheme_id: v })}>
+                          <SelectTrigger className="h-10 bg-white border-slate-200 rounded-lg text-sm">
+                            <SelectValue placeholder="Select scheme" />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl border-slate-200 shadow-xl bg-white p-1">
+                            {schemes.map(s => (
+                              <SelectItem key={s.id} value={String(s.id)} className="text-sm">
+                                {s.name} — ({(s.base_rate * 100).toFixed(1)}%)
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {currentUser?.role === "admin" && (
+                        <div className="space-y-2">
+                          <label className="text-xs font-semibold text-slate-600">Reporting Manager</label>
+                          <Select value={form.manager_id || undefined} onValueChange={v => setForm({ ...form, manager_id: v })}>
+                            <SelectTrigger className="h-10 bg-white border-slate-200 rounded-lg text-sm">
+                              <SelectValue placeholder="Assign Manager" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-slate-200 shadow-xl bg-white p-1">
+                              <SelectItem value="none" className="text-xs text-slate-400">Directly Managed</SelectItem>
+                              {users.filter(u => u.role === "manager").map(m => (
+                                <SelectItem key={m.id} value={String(m.id)} className="text-sm">
+                                  {m.full_name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Status */}
+                <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-xl">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">Account Access</p>
+                    <p className="text-xs text-slate-500">Enable or disable system access for this user.</p>
+                  </div>
+                  <button
+                    onClick={() => setForm({ ...form, is_active: !form.is_active })}
+                    className={`h-9 px-4 rounded-lg text-xs font-semibold transition-all border ${form.is_active
+                      ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                      : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
+                      }`}
+                  >
+                    {form.is_active ? "Active" : "Disabled"}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer actions */}
+            <div className="flex items-center justify-end gap-3 px-8 py-5 border-t border-slate-100 bg-white shrink-0">
+              <Button variant="outline" onClick={() => setShowModal(false)} className="h-10 px-5 rounded-lg text-sm font-medium border-slate-200">
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                disabled={submitting}
+                className="h-10 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-sm shadow-sm disabled:opacity-50 transition-all"
+              >
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : (modalMode === "create" ? "Create User" : "Save Changes")}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
