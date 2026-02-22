@@ -170,15 +170,16 @@ ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
 
 -- 4. INITIALIZE MASTER ADMIN
 -- Hash for 'Datamation@2026'
-INSERT INTO public.users (email, password_hash, full_name, role_id, department, is_active)
+INSERT INTO public.users (email, password_hash, full_name, role_id, department, is_active, approval_status)
 VALUES (
     'admin@datamation.com', 
-    '$2b$10$7Z6oT5.Qp9BfT4p8T3p1u.Vn/p8wG9m5Yp/Q/U/X/Z/R/Z/p/p/p/', 
+    '$2b$10$COGRa9acYh8.jPphqCFPeOocG1sC2Ku0yveRGAnnLv8vQN.SapRo', 
     'System Administrator', 
     1, 
     'IT Operations', 
-    TRUE
-) ON CONFLICT (email) DO UPDATE SET is_active = TRUE;
+    TRUE,
+    'approved'
+) ON CONFLICT (email) DO UPDATE SET is_active = TRUE, approval_status = 'approved';
 
 -- 5. PRODUCTION INDEXES FOR DASHBOARD SPEED
 CREATE INDEX IF NOT EXISTS idx_sales_logs_composite_status 
