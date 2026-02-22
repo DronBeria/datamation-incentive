@@ -1,6 +1,18 @@
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 
-const resend = new Resend(process.env.RESEND_API_KEY || 're_123456789');
+/**
+ * 🏭 INDUSTRIAL SMTP TRANSPORTER
+ * Configured for high-reliability enterprise email flows.
+ */
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || 'smtp.gmail.com',
+  port: parseInt(process.env.SMTP_PORT || '465'),
+  secure: process.env.SMTP_PORT === '465', // true for 465, false for other ports
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
 
 // INDUSTRIAL THEME COLORS
 const COLORS = {
@@ -13,12 +25,11 @@ const COLORS = {
   amber: '#f59e0b',     // Amber 500
 };
 
-const BASE_TEMPLATE = (content: string, previewText: string) => `
+const BASE_TEMPLATE = (content: string) => `
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
-    <title>PayoutPower | Automated Security Dispatch</title>
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 40px 20px; background-color: ${COLORS.bg}; color: ${COLORS.dark}; line-height: 1.6; margin: 0;">
     <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 24px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); border: 1px solid ${COLORS.border};">
@@ -36,7 +47,7 @@ const BASE_TEMPLATE = (content: string, previewText: string) => `
         <!-- Footer -->
         <div style="background: ${COLORS.bg}; padding: 32px; border-top: 1px solid ${COLORS.border}; text-align: center;">
             <p style="margin: 0; font-size: 11px; font-weight: 700; color: ${COLORS.slate}; text-transform: uppercase; letter-spacing: 0.15em;">Automated Security Dispatch</p>
-            <p style="margin: 8px 0 0; font-size: 12px; color: ${COLORS.slate}; font-weight: 500;">Sent via <strong>Datamation Inc.</strong> Professional Cloud Node</p>
+            <p style="margin: 8px 0 0; font-size: 12px; color: ${COLORS.slate}; font-weight: 500;">Sent via <strong>Datamation Inc.</strong> Professional SMTP Node</p>
             <div style="margin: 24px 0 0; padding-top: 24px; border-top: 1px solid ${COLORS.border};">
                 <p style="margin: 0; font-size: 10px; color: #cbd5e1;">&copy; 2026 Datamation Inc. All rights reserved. <br/> This communication is intended solely for the authenticated user and contains confidential personnel data.</p>
             </div>
@@ -45,6 +56,24 @@ const BASE_TEMPLATE = (content: string, previewText: string) => `
 </body>
 </html>
 `;
+
+/**
+ * Global Email Wrapper for SMTP Reliability
+ */
+async function sendMail({ to, subject, html }: { to: string, subject: string, html: string }) {
+  try {
+    const info = await transporter.sendMail({
+      from: process.env.SMTP_FROM || `"PayoutPower" <notifications@datamation.com>`,
+      to,
+      subject,
+      html,
+    });
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error("SMTP Error:", error);
+    return { success: false, error };
+  }
+}
 
 /**
  * 📊 INCENTIVE DISTRIBUTION NOTIFICATION
@@ -70,14 +99,9 @@ export async function sendIncentiveUpdate(to: string, userName: string, action: 
         <div style="text-align: center;">
             <a href="${process.env.NEXT_PUBLIC_APP_URL || '#'}" style="display: inline-block; padding: 14px 32px; background: ${COLORS.dark}; color: #ffffff; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 14px;">Verify in Dashboard</a>
         </div>
-    `, `Protcol Update: ${action}`);
+    `);
 
-  return resend.emails.send({
-    from: 'PayoutPower IMS <notifications@datamation.com>',
-    to: [to],
-    subject: `[PayoutPower] Incentive Update: ${action}`,
-    html
-  });
+  return sendMail({ to, subject: `[PayoutPower] Incentive Update: ${action}`, html });
 }
 
 /**
@@ -97,14 +121,9 @@ export async function sendPasswordResetEmail(to: string, userName: string, token
             <p style="margin-bottom: 24px; color: ${COLORS.slate}; font-size: 13px;">If you did not request this, please ignore this email. The token will expire in 1 hour.</p>
             <a href="${process.env.NEXT_PUBLIC_APP_URL || '#'}" style="display: inline-block; padding: 14px 32px; background: ${COLORS.primary}; color: #ffffff; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 14px;">Return to PayoutPower</a>
         </div>
-    `, "Reset your PayoutPower password");
+    `);
 
-  return resend.emails.send({
-    from: 'PayoutPower Security <security@datamation.com>',
-    to: [to],
-    subject: `[PayoutPower] Automated Recovery: Password Reset`,
-    html
-  });
+  return sendMail({ to, subject: `[PayoutPower] Automated Recovery: Password Reset`, html });
 }
 
 /**
@@ -133,14 +152,9 @@ export async function sendAdminSignupNotification(adminEmail: string, userName: 
         <div style="text-align: center;">
             <a href="${process.env.NEXT_PUBLIC_APP_URL || '#'}/dashboard/users" style="display: inline-block; padding: 14px 32px; background: ${COLORS.dark}; color: #ffffff; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 14px;">Open Approval Queue</a>
         </div>
-    `, `New Account Request: ${userName}`);
+    `);
 
-  return resend.emails.send({
-    from: 'PayoutPower System <system@datamation.com>',
-    to: [adminEmail],
-    subject: `[PayoutPower] ACTION REQUIRED: New Registration Pending`,
-    html
-  });
+  return sendMail({ to: adminEmail, subject: `[PayoutPower] ACTION REQUIRED: New Registration Pending`, html });
 }
 
 /**
@@ -163,12 +177,7 @@ export async function sendUserStatusUpdate(userEmail: string, userName: string, 
         ` : ''}
 
         <p style="margin-top: 32px; font-size: 12px; color: ${COLORS.slate};">This logic-based decision was made by an authenticated organizational administrator.</p>
-    `, `Account Status: ${status}`);
+    `);
 
-  return resend.emails.send({
-    from: 'PayoutPower Identity <identity@datamation.com>',
-    to: [userEmail],
-    subject: `[PayoutPower] Identity Status Update: ${status.charAt(0).toUpperCase() + status.slice(1)}`,
-    html
-  });
+  return sendMail({ to: userEmail, subject: `[PayoutPower] Identity Status Update: ${status.charAt(0).toUpperCase() + status.slice(1)}`, html });
 }
