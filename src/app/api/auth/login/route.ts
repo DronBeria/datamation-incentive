@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
     // Secure HttpOnly cookie
     res.cookies.set("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: req.url.startsWith("https://"),
       sameSite: "lax",
       maxAge: 60 * 60 * 8, // 8 hours (matches JWT expiry)
       path: "/",
