@@ -27,7 +27,30 @@ VALUES (
     TRUE
 );
 
--- 4. VERIFICATION LOG
+-- 4. ENSURE AUDIT LOG TABLE AND COLUMNS EXIST
+CREATE TABLE IF NOT EXISTS public.audit_logs (
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    user_id BIGINT,
+    action TEXT NOT NULL,
+    entity_type TEXT NOT NULL,
+    entity_id BIGINT,
+    old_value TEXT,
+    new_value TEXT,
+    ip_address TEXT DEFAULT '',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='audit_logs' AND column_name='old_value') THEN
+        ALTER TABLE public.audit_logs ADD COLUMN old_value TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='audit_logs' AND column_name='new_value') THEN
+        ALTER TABLE public.audit_logs ADD COLUMN new_value TEXT;
+    END IF;
+END $$;
+
+-- 5. VERIFICATION LOG
 INSERT INTO public.audit_logs (action, entity_type, old_value, new_value)
 VALUES ('SYSTEM_RESET', 'auth', 'ALL_USERS_PURGED', 'ADMIN_INITIALIZED_admin@datamation.com');
 

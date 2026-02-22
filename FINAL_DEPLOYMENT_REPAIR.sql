@@ -137,7 +137,7 @@ CREATE TABLE IF NOT EXISTS public.adjustments (
 
 CREATE TABLE IF NOT EXISTS public.audit_logs (
   id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-  user_id BIGINT REFERENCES public.users(id),
+  user_id BIGINT,
   action TEXT NOT NULL,
   entity_type TEXT NOT NULL,
   entity_id BIGINT,
@@ -146,6 +146,16 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
   ip_address TEXT DEFAULT '',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='audit_logs' AND column_name='old_value') THEN
+        ALTER TABLE public.audit_logs ADD COLUMN old_value TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='audit_logs' AND column_name='new_value') THEN
+        ALTER TABLE public.audit_logs ADD COLUMN new_value TEXT;
+    END IF;
+END $$;
 
 -- 3. ENSURE SYSTEM ROLES EXIST
 INSERT INTO public.roles (id, name) OVERRIDING SYSTEM VALUE VALUES 
