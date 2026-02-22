@@ -27,11 +27,20 @@ export async function POST(req: NextRequest) {
             "UPDATE public.users SET reset_token = ?, reset_token_expiry = ? WHERE id = ?"
         ).run(token, expiry.toISOString(), user.id);
 
-        // In a real production environment, we would trigger an AWS SES or SendGrid email here.
-        // For this implementation, we return the token so the UI can proceed (for demo/development).
+        // Industrial Email Notification (Non-blocking)
+        try {
+            const { sendPasswordResetEmail } = require("@/lib/email");
+            await sendPasswordResetEmail(email, user.full_name || "User", token);
+        } catch (e) {
+            console.error("Password reset email failed", e);
+            // In dev we might still want to see it if API key is missing
+            if (process.env.NODE_ENV === 'development') {
+                return NextResponse.json({ message: "Dev Mode: Email failed, token: " + token, token });
+            }
+        }
+
         return NextResponse.json({
-            message: "Recovery email has been dispatched.",
-            token: token // This would spend in production and only be in email
+            message: "Recovery dispatch initialized. Please check your inbox for instructions.",
         });
 
     } catch (e: any) {

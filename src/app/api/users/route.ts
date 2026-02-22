@@ -137,7 +137,15 @@ export async function PUT(req: Request) {
     "INSERT INTO public.audit_logs (user_id, action, entity_type, entity_id, new_value) VALUES (?, 'UPDATE', 'user', ?, ?)"
   ).run(session.id, id, JSON.stringify({ email, role_id, is_active }));
 
-  return NextResponse.json({ message: "User record successfully synchronised" });
+  // 4. Send Notification if approval status changed
+  if (body.approval_status && body.approval_status !== "pending") {
+    try {
+      const { sendUserStatusUpdate } = require("@/lib/email");
+      await sendUserStatusUpdate(email, full_name, body.approval_status);
+    } catch (e) { console.warn("User status email deferred", e); }
+  }
+
+  return NextResponse.json({ message: "Profile updated successfully" });
 }
 
 export async function DELETE(req: Request) {

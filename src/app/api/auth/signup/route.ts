@@ -42,6 +42,18 @@ export async function POST(req: NextRequest) {
             "INSERT INTO public.audit_logs (action, entity_type, entity_id, new_value) VALUES ('SIGNUP_REQUEST', 'user', ?, ?)"
         ).run(userId, JSON.stringify({ email, full_name, role_id }));
 
+        // Industrial Email Notification to Admins (Non-blocking)
+        try {
+            const admins = await db.prepare("SELECT email FROM public.users WHERE role_id = 1 AND is_active = TRUE").all();
+            const roleNameMap: any = { "2": "Manager", "3": "Accounts", "4": "Salesperson" };
+            const requestedRole = roleNameMap[role_id] || "User";
+
+            const { sendAdminSignupNotification } = require("@/lib/email");
+            for (const admin of admins as any[]) {
+                await sendAdminSignupNotification(admin.email, full_name, email, requestedRole);
+            }
+        } catch (e) { console.warn("Admin signup notification deferred", e); }
+
         return NextResponse.json({
             message: "Registration successful. Your account is now in the queue for Admin approval.",
             status: "pending"
