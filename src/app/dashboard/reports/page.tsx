@@ -119,27 +119,27 @@ export default function ReportsPage() {
       {/* Header Area */}
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-heading text-slate-900 tracking-tight">Performance Analytics</h1>
-          <p className="text-sm text-slate-500 mt-1">Strategic insights and fiscal performance diagnostics</p>
+          <h1 className="text-2xl font-heading text-slate-900 tracking-tight">Performance Reports</h1>
+          <p className="text-sm text-slate-500 mt-1">Review team performance and payment timelines.</p>
         </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <DateRangePicker value={dateRange} onChange={setDateRange} />
-            <Button onClick={handleExportCSV} variant="outline" className="h-10 px-4 rounded-xl font-semibold text-xs border-slate-200 bg-white text-slate-600 hover:bg-slate-50 shadow-sm">
-              <Download className="h-4 w-4 mr-2" /> CSV
-            </Button>
-            <Button onClick={handleExportPDF} variant="outline" className="h-10 px-4 rounded-xl font-semibold text-xs border-slate-200 bg-white text-slate-600 hover:bg-slate-50 shadow-sm">
-              <FileText className="h-4 w-4 mr-2" /> PDF
-            </Button>
-          </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <DateRangePicker value={dateRange} onChange={setDateRange} />
+          <Button onClick={handleExportCSV} variant="outline" className="h-10 px-4 rounded-xl font-semibold text-xs border-slate-200 bg-white text-slate-600 hover:bg-slate-50 shadow-sm">
+            <Download className="h-4 w-4 mr-2" /> CSV
+          </Button>
+          <Button onClick={handleExportPDF} variant="outline" className="h-10 px-4 rounded-xl font-semibold text-xs border-slate-200 bg-white text-slate-600 hover:bg-slate-50 shadow-sm">
+            <FileText className="h-4 w-4 mr-2" /> PDF
+          </Button>
+        </div>
       </div>
 
       {/* KPI Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Gross Revenue", value: `₹${fmt(totalRevenue)}`, icon: TrendingUp, color: "text-blue-600", bg: "bg-blue-50/50" },
+          { label: "Total Revenue", value: `₹${fmt(totalRevenue)}`, icon: TrendingUp, color: "text-blue-600", bg: "bg-blue-50/50" },
           { label: "Total Commissions", value: `₹${fmt(totalIncentives)}`, icon: Award, color: "text-indigo-600", bg: "bg-indigo-50/50" },
-          { label: "Elite Members", value: data.topPerformers?.length || 0, icon: Target, color: "text-emerald-600", bg: "bg-emerald-50/50" },
-          { label: "Pending Batches", value: data.aging?.length || 0, icon: Clock, color: "text-rose-500", bg: "bg-rose-50/50" },
+          { label: "Top Sellers", value: data.topPerformers?.length || 0, icon: Target, color: "text-emerald-600", bg: "bg-emerald-50/50" },
+          { label: "Pending Payments", value: data.aging?.length || 0, icon: Clock, color: "text-rose-500", bg: "bg-rose-50/50" },
         ].map((s, i) => (
           <Card key={i} className="p-5 border border-slate-100 shadow-sm bg-white rounded-2xl group transition-all hover:bg-slate-50/30">
             <div className="flex items-center gap-4">
@@ -171,8 +171,8 @@ export default function ReportsPage() {
           <Card className="lg:col-span-2 p-8 border border-slate-100 shadow-sm bg-white rounded-2xl">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
               <div>
-                <h3 className="text-xl font-heading text-slate-900 tracking-tight">Revenue Trends</h3>
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mt-1">Growth vs commission liabilities</p>
+                <h3 className="text-xl font-heading text-slate-900 tracking-tight">Revenue vs Payouts</h3>
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mt-1">Revenue income vs commission payouts</p>
               </div>
               <div className="flex items-center gap-6 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
                 <div className="flex items-center gap-2">
@@ -290,7 +290,7 @@ export default function ReportsPage() {
                 <Crown className="h-4 w-4 text-white" />
               </div>
               <div>
-                <h3 className="text-lg font-heading text-slate-900 tracking-tight">Sales Leaderboard</h3>
+                <h3 className="text-lg font-heading text-slate-900 tracking-tight">Top Sellers</h3>
                 <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Top personnel by revenue generation</p>
               </div>
             </div>
@@ -343,7 +343,7 @@ export default function ReportsPage() {
       {activeTab === "aging" && (
         <Card className="border border-slate-100 shadow-sm bg-white rounded-2xl overflow-hidden">
           <div className="px-8 py-6 border-b border-slate-50 bg-slate-50/30">
-            <h3 className="text-lg font-heading text-slate-900 tracking-tight">Batch Maturity Analysis</h3>
+            <h3 className="text-lg font-heading text-slate-900 tracking-tight">Payment Timelines</h3>
             <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mt-1">Pending disbursements queue analysis</p>
           </div>
           <div className="overflow-x-auto custom-scrollbar">

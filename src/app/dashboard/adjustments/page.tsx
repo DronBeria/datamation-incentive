@@ -21,7 +21,7 @@ import { downloadCSV } from "@/lib/export-utils";
 const TYPE_CONFIG: Record<string, { label: string; icon: React.ElementType; amountClass: string; bg: string; dot: string; sign: string }> = {
     clawback: { label: "Clawback", icon: ArrowDownCircle, amountClass: "text-red-600", bg: "bg-red-50 text-red-600", dot: "bg-red-500", sign: "−" },
     bonus: { label: "Performance Bonus", icon: ArrowUpCircle, amountClass: "text-emerald-600", bg: "bg-emerald-50 text-emerald-600", dot: "bg-emerald-500", sign: "+" },
-    manual_adjustment: { label: "Correction", icon: Sliders, amountClass: "text-blue-600", bg: "bg-blue-50 text-blue-600", dot: "bg-blue-500", sign: "±" },
+    correction: { label: "Correction", icon: Sliders, amountClass: "text-blue-600", bg: "bg-blue-50 text-blue-600", dot: "bg-blue-500", sign: "±" },
 };
 
 const ADJ_CSV_COLUMNS = [
@@ -42,7 +42,7 @@ export default function AdjustmentsPage() {
     const [search, setSearch] = useState("");
     const [typeFilter, setTypeFilter] = useState("all");
     const [form, setForm] = useState({
-        salesperson_id: "", amount: "", reason: "", type: "clawback",
+        user_id: "", amount: "", reason: "", type: "clawback",
     });
 
     const fetchData = async () => {
@@ -62,7 +62,7 @@ export default function AdjustmentsPage() {
     useEffect(() => { fetchData(); }, []);
 
     const handleCreate = async () => {
-        if (!form.salesperson_id || !form.amount || !form.reason) {
+        if (!form.user_id || !form.amount || !form.reason) {
             toast.error("Required fields missing"); return;
         }
         setCreating(true);
@@ -70,15 +70,29 @@ export default function AdjustmentsPage() {
             const res = await fetch("/api/adjustments", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ ...form, salesperson_id: parseInt(form.salesperson_id), amount: parseFloat(form.amount) }),
+                body: JSON.stringify({ ...form, user_id: parseInt(form.user_id), amount: parseFloat(form.amount) }),
             });
             if (res.ok) {
                 toast.success("Fiscal adjustment successfully indexed");
                 setShowCreate(false);
-                setForm({ salesperson_id: "", amount: "", reason: "", type: "clawback" });
+                setForm({ user_id: "", amount: "", reason: "", type: "clawback" });
                 fetchData();
             }
         } finally { setCreating(false); }
+    };
+
+    const handleUpdateStatus = async (id: number, status: string) => {
+        try {
+            const res = await fetch(`/api/adjustments/${id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status }),
+            });
+            if (res.ok) {
+                toast.success(`Adjustment ${status} successfully`);
+                fetchData();
+            }
+        } catch { toast.error("Update failed"); }
     };
 
     const filtered = useMemo(() => {
@@ -167,7 +181,7 @@ export default function AdjustmentsPage() {
                             <SelectItem value="all" className="rounded-lg text-xs font-medium">All Types</SelectItem>
                             <SelectItem value="clawback" className="rounded-lg text-xs font-medium text-red-600">Clawbacks</SelectItem>
                             <SelectItem value="bonus" className="rounded-lg text-xs font-medium text-emerald-600">Bonuses</SelectItem>
-                            <SelectItem value="manual_adjustment" className="rounded-lg text-xs font-medium text-blue-600">Corrections</SelectItem>
+                            <SelectItem value="correction" className="rounded-lg text-xs font-medium text-blue-600">Corrections</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
@@ -185,10 +199,11 @@ export default function AdjustmentsPage() {
                         <Table>
                             <TableHeader>
                                 <TableRow className="bg-slate-50/50 border-none">
-                                    <TableHead className="py-4 pl-6 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Salesperson</TableHead>
+                                    <TableHead className="py-4 pl-6 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Recipient</TableHead>
                                     <TableHead className="py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Type</TableHead>
                                     <TableHead className="py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Reason</TableHead>
                                     <TableHead className="py-4 text-right text-[11px] font-bold text-slate-500 uppercase tracking-widest">Amount</TableHead>
+                                    <TableHead className="py-4 text-center text-[11px] font-bold text-slate-500 uppercase tracking-widest">Status</TableHead>
                                     <TableHead className="py-4 pr-6 text-right text-[11px] font-bold text-slate-500 uppercase tracking-widest">Date</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -225,6 +240,24 @@ export default function AdjustmentsPage() {
                                             </TableCell>
                                             <TableCell className={`text-right font-bold tabular-nums text-sm ${cfg.amountClass}`}>
                                                 {cfg.sign} ₹{Math.abs(a.amount).toLocaleString("en-IN")}
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    {a.status === 'pending' ? (
+                                                        <div className="flex items-center gap-1.5">
+                                                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-emerald-600 hover:bg-emerald-50 rounded-md" onClick={() => handleUpdateStatus(a.id, 'applied')}>
+                                                                <TrendingUp className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-600 hover:bg-red-50 rounded-md" onClick={() => handleUpdateStatus(a.id, 'cancelled')}>
+                                                                <Minus className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                        </div>
+                                                    ) : (
+                                                        <Badge variant="outline" className={`text-[9px] font-bold uppercase ${a.status === 'applied' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'} border-none px-2 py-0.5`}>
+                                                            {a.status}
+                                                        </Badge>
+                                                    )}
+                                                </div>
                                             </TableCell>
                                             <TableCell className="text-right pr-6">
                                                 <span className="text-xs font-semibold text-slate-400">
@@ -263,7 +296,7 @@ export default function AdjustmentsPage() {
                                 {/* Recipient */}
                                 <div className="space-y-2">
                                     <label className="text-xs font-semibold text-slate-700">Beneficiary Assignment <span className="text-red-500">*</span></label>
-                                    <Select value={form.salesperson_id || undefined} onValueChange={v => setForm({ ...form, salesperson_id: v })}>
+                                    <Select value={form.user_id || undefined} onValueChange={v => setForm({ ...form, user_id: v })}>
                                         <SelectTrigger className="h-11 border-slate-200 bg-white rounded-lg text-sm font-medium text-slate-700 focus:ring-blue-500/20 focus:border-blue-400">
                                             <SelectValue placeholder="Select Recipient Staff" />
                                         </SelectTrigger>
@@ -291,7 +324,7 @@ export default function AdjustmentsPage() {
                                             <SelectContent className="rounded-xl border-slate-200 shadow-xl bg-white p-1">
                                                 <SelectItem value="clawback" className="text-sm font-semibold text-red-600">Clawback (−)</SelectItem>
                                                 <SelectItem value="bonus" className="text-sm font-semibold text-emerald-600">Bonus (+)</SelectItem>
-                                                <SelectItem value="manual_adjustment" className="text-sm font-semibold text-blue-600">Correction (±)</SelectItem>
+                                                <SelectItem value="correction" className="text-sm font-semibold text-blue-600">Correction (±)</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>

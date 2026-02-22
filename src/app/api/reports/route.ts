@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import getDb from "@/lib/db";
+import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -8,7 +8,6 @@ export async function GET(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const db = getDb();
   const url = new URL(req.url);
   const dateFrom = url.searchParams.get("from");
   const dateTo = url.searchParams.get("to");
@@ -32,26 +31,26 @@ export async function GET(req: NextRequest) {
     SELECT to_char(sale_date, 'YYYY-MM') as month, 
       SUM(deal_value) as revenue, 
       SUM(calculated_commission) as incentives
-    FROM sales_logs ${salesWhere} GROUP BY month ORDER BY month
+    FROM public.sales_logs ${salesWhere} GROUP BY month ORDER BY month
   `).all(...salesParams);
 
   // Top performers
   const topPerformers = await db.prepare(`
     SELECT u.full_name, COUNT(sl.id) as deals, SUM(sl.deal_value) as total_sales, SUM(sl.calculated_commission) as total_incentives
-    FROM sales_logs sl JOIN users u ON sl.salesperson_id = u.id
+    FROM public.sales_logs sl JOIN public.users u ON sl.salesperson_id = u.id
     ${salesWhere ? salesWhere.replace(/sale_date/g, "sl.sale_date") : ""}
-    GROUP BY sl.salesperson_id ORDER BY total_sales DESC LIMIT 10
+    GROUP BY u.full_name ORDER BY total_sales DESC LIMIT 10
   `).all(...salesParams);
 
   // Disbursement aging
   const aging = await db.prepare(`
     SELECT ib.id, ib.batch_name, ib.status, ib.total_amount, ib.created_at, ib.approved_at, ib.paid_at,
     CASE 
-      WHEN ib.status = 'paid' THEN (ib.paid_at::date - ib.approved_at::date)
-      WHEN ib.status = 'approved' THEN (now()::date - ib.approved_at::date)
+      WHEN ib.status = 'paid' AND ib.approved_at IS NOT NULL THEN (ib.paid_at::date - ib.approved_at::date)
+      WHEN ib.status = 'approved' AND ib.approved_at IS NOT NULL THEN (now()::date - ib.approved_at::date)
       ELSE (now()::date - ib.created_at::date)
     END as days_pending
-    FROM incentive_batches ib
+    FROM public.incentive_batches ib
     WHERE ib.status IN ('approved', 'pending_approval', 'paid') ${batchWhere}
     ORDER BY days_pending DESC
   `).all(...batchParams);
@@ -65,16 +64,16 @@ export async function GET(req: NextRequest) {
 
   const statusDist = await db.prepare(`
     SELECT status, COUNT(*) as count, COALESCE(SUM(total_amount),0) as total
-    FROM incentive_batches ${statusWhere} GROUP BY status
+    FROM public.incentive_batches ${statusWhere} GROUP BY status
   `).all(...statusParams);
 
   // Forecasting: Simple run-rate projection for the current month
   const now = new Date();
-  const dayOfMonth = now.getDate();
+  const dayOfMonth = Math.max(1, now.getDate());
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
 
   const currentMonthSalesResult = await db.prepare(`
-    SELECT COALESCE(SUM(deal_value),0) as s FROM sales_logs 
+    SELECT COALESCE(SUM(deal_value),0) as s FROM public.sales_logs 
     WHERE to_char(sale_date, 'MM') = ? AND to_char(sale_date, 'YYYY') = ?
   `).get(
     (now.getMonth() + 1).toString().padStart(2, '0'),
