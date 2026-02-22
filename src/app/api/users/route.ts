@@ -32,8 +32,12 @@ export async function GET() {
 
   query += " ORDER BY u.id";
 
-  const users = await db.prepare(query).all(...params);
-  return NextResponse.json(users);
+  try {
+    const users = await db.prepare(query).all(...params);
+    return NextResponse.json(users);
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message || "Failed to fetch users" }, { status: 500 });
+  }
 }
 
 export async function POST(req: Request) {

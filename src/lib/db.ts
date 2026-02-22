@@ -9,7 +9,10 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
   }
 });
 
-// Compatibility wrapper for the rest of the app
+/**
+ * 🛠️ INDUSTRIAL DATABASE WRAPPER
+ * Optimized for Supabase RPC 'exec_sql' bridge.
+ */
 export const db = {
   prepare: (query: string) => ({
     all: async (...params: any[]) => {
@@ -17,17 +20,20 @@ export const db = {
         const sql_query = formatQuery(query, params);
         const { data, error } = await supabase.rpc('exec_sql', { sql_query });
         if (error) {
-          console.error("RPC [all] Error:", error.message, "| Query:", sql_query);
+          console.error("[DB] RPC [all] Error:", error, "| Query:", sql_query);
           return [];
         }
-        // Handle cases where RPC returns [{exec_sql: [...]}] or just [...]
+
         let rows = data;
-        if (Array.isArray(data) && data[0] && 'exec_sql' in data[0]) {
-          rows = data[0].exec_sql || [];
+        if (Array.isArray(data) && data.length === 1 && data[0] && typeof data[0] === 'object' && 'exec_sql' in data[0]) {
+          rows = data[0].exec_sql;
         }
-        return Array.isArray(rows) ? rows : [];
+
+        const arr = Array.isArray(rows) ? rows : [];
+        console.log(`[DB] all() -> query: ${sql_query.substring(0, 50)}... | result: ${arr.length} rows`);
+        return arr;
       } catch (err: any) {
-        console.error("DB [all] Exception:", err.message);
+        console.error("[DB] all() Exception:", err.message);
         return [];
       }
     },
@@ -36,16 +42,20 @@ export const db = {
         const sql_query = formatQuery(query, params);
         const { data, error } = await supabase.rpc('exec_sql', { sql_query });
         if (error) {
-          console.error("RPC [get] Error:", error.message, "| Query:", sql_query);
+          console.error("[DB] RPC [get] Error:", error, "| Query:", sql_query);
           return null;
         }
+
         let rows = data;
-        if (Array.isArray(data) && data[0] && 'exec_sql' in data[0]) {
-          rows = data[0].exec_sql || [];
+        if (Array.isArray(data) && data.length === 1 && data[0] && typeof data[0] === 'object' && 'exec_sql' in data[0]) {
+          rows = data[0].exec_sql;
         }
-        return (Array.isArray(rows) && rows.length > 0) ? rows[0] : null;
+
+        const result = (Array.isArray(rows) && rows.length > 0) ? rows[0] : null;
+        console.log(`[DB] get() -> query: ${sql_query.substring(0, 50)}... | result: ${result ? 'FOUND' : 'NULL'}`);
+        return result;
       } catch (err: any) {
-        console.error("DB [get] Exception:", err.message);
+        console.error("[DB] get() Exception:", err.message);
         return null;
       }
     },
@@ -54,18 +64,20 @@ export const db = {
         const sql_query = formatQuery(query, params);
         const { data, error } = await supabase.rpc('exec_sql', { sql_query });
         if (error) {
-          console.error("RPC [run] Error:", error.message, "| Query:", sql_query);
+          console.error("[DB] RPC [run] Error:", error, "| Query:", sql_query);
           throw error;
         }
+
         let rows = data;
-        if (Array.isArray(data) && data[0] && 'exec_sql' in data[0]) {
-          rows = data[0].exec_sql || [];
+        if (Array.isArray(data) && data.length === 1 && data[0] && typeof data[0] === 'object' && 'exec_sql' in data[0]) {
+          rows = data[0].exec_sql;
         }
-        // Return id from RETURNING clause if present
+
         const result = (Array.isArray(rows) && rows.length > 0) ? rows[0] : {};
+        console.log(`[DB] run() -> query: ${sql_query.substring(0, 50)}... | result id: ${result.id || 0}`);
         return { lastInsertRowid: result.id || 0 };
       } catch (err: any) {
-        console.error("DB [run] Exception:", err.message);
+        console.error("[DB] run() Exception:", err.message);
         throw err;
       }
     }

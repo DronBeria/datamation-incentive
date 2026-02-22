@@ -173,13 +173,13 @@ ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
 INSERT INTO public.users (email, password_hash, full_name, role_id, department, is_active, approval_status)
 VALUES (
     'admin@datamation.com', 
-    '$2b$10$COGRa9acYh8.jPphqCFPeOocG1sC2Ku0yveRGAnnLv8vQN.SapRo', 
+    '$2b$10$Gr85SkGsiqXEyxrrqwi3R.T.tr4SYal1g3PQKi96bxKrrSbIxpt2i', 
     'System Administrator', 
     1, 
     'IT Operations', 
     TRUE,
     'approved'
-) ON CONFLICT (email) DO UPDATE SET is_active = TRUE, approval_status = 'approved';
+) ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, is_active = TRUE, approval_status = 'approved';
 
 -- 5. PRODUCTION INDEXES FOR DASHBOARD SPEED
 CREATE INDEX IF NOT EXISTS idx_sales_logs_composite_status 
