@@ -212,40 +212,39 @@ export default function UsersPage() {
 
   const filtered = useMemo(() => {
     return users.filter(u => {
-      // 1. Tab Level Isolation
+      // 1. Isolation: Approval Queue vs Main Directory
       const isPending = u.approval_status === "pending";
       if (activeTab === "approvals") return isPending;
-      if (isPending) return false; // Never show pending in main directory
+      if (isPending) return false;
 
-      // 2. Search Logic
+      // 2. Search Engine (Robuster checks)
+      const term = search.toLowerCase();
       const matchSearch =
-        u.full_name.toLowerCase().includes(search.toLowerCase()) ||
-        u.email.toLowerCase().includes(search.toLowerCase()) ||
-        (u.department || "").toLowerCase().includes(search.toLowerCase());
+        (u.full_name || "").toLowerCase().includes(term) ||
+        (u.email || "").toLowerCase().includes(term) ||
+        (u.department || "").toLowerCase().includes(term);
 
-      // 3. Role/Status Filters
+      // 3. Selection Filters
       const matchRole = roleFilter === "all" || u.role === roleFilter;
 
-      // Simplified status matching for Industrial Directory
-      let matchStatus = true;
-      const uActive = !!(u.is_active === true || u.is_active === 1 || u.is_active === 'TRUE');
+      // Robust Boolean Logic for Industrial Databases (Handles 1/0, TRUE/FALSE, true/false)
+      const isActive = u.is_active == true || u.is_active == 1 || String(u.is_active).toLowerCase() === 'true';
 
-      if (statusFilter === "active") {
-        matchStatus = uActive && u.approval_status === 'approved';
-      } else if (statusFilter === "inactive") {
-        matchStatus = !uActive;
-      }
+      let matchStatus = true;
+      if (statusFilter === "active") matchStatus = isActive;
+      else if (statusFilter === "inactive") matchStatus = !isActive;
 
       return matchSearch && matchRole && matchStatus;
     });
   }, [users, search, roleFilter, statusFilter, activeTab]);
 
-  const stats = useMemo(() => ({
-    total: users.length,
-    active: users.filter(u => u.is_active && u.approval_status === 'approved').length,
-    salesperson: users.filter(u => u.role === "salesperson").length,
-    pending: users.filter(u => u.approval_status === 'pending').length,
-  }), [users]);
+  const stats = useMemo(() => {
+    const totalCount = users.length;
+    const activeCount = users.filter(u => u.is_active == true || u.is_active == 1 || String(u.is_active).toLowerCase() === 'true').length;
+    const salesCount = users.filter(u => u.role === "salesperson").length;
+    const pendingCount = users.filter(u => u.approval_status === 'pending').length;
+    return { total: totalCount, active: activeCount, salesperson: salesCount, pending: pendingCount };
+  }, [users]);
 
   const handleExport = () => {
     if (!filtered.length) return toast.error("No data available");
@@ -387,9 +386,14 @@ export default function UsersPage() {
                     <TableRow key={u.id} className="group hover:bg-slate-50/50 transition-all border-b border-slate-50 last:border-none">
                       <TableCell className="pl-6 py-4">
                         <div className="flex items-center gap-3.5">
-                          <div className={`h-10 w-10 rounded-lg ${u.is_active ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-slate-50 text-slate-300 border-slate-100"} border flex items-center justify-center font-bold text-sm shadow-sm transition-all group-hover:bg-white`}>
-                            {u.full_name[0]}
-                          </div>
+                          {(() => {
+                            const isActive = u.is_active == true || u.is_active == 1 || String(u.is_active).toLowerCase() === 'true';
+                            return (
+                              <div className={`h-10 w-10 rounded-lg ${isActive ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-slate-50 text-slate-300 border-slate-100"} border flex items-center justify-center font-bold text-sm shadow-sm transition-all group-hover:bg-white`}>
+                                {u.full_name[0]}
+                              </div>
+                            );
+                          })()}
                           <div className="min-w-0">
                             <p className="font-semibold text-slate-900 tracking-tight text-sm group-hover:text-blue-600 transition-colors truncate">{u.full_name}</p>
                             <p className="text-[11px] text-slate-400 truncate opacity-80">{u.email}</p>
@@ -420,13 +424,15 @@ export default function UsersPage() {
                       </TableCell>
                       <TableCell>
                         {(() => {
+                          const isActive = u.is_active == true || u.is_active == 1 || String(u.is_active).toLowerCase() === 'true';
+
                           if (u.approval_status === "rejected") return (
                             <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg border-none bg-slate-900 text-white shadow-sm flex w-fit items-center gap-1.5">
                               <div className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
                               Banned
                             </Badge>
                           );
-                          if (!u.is_active) return (
+                          if (!isActive) return (
                             <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg border-none bg-amber-50 text-amber-600 shadow-sm flex w-fit items-center gap-1.5">
                               <div className="h-1.5 w-1.5 rounded-full bg-amber-400" />
                               Suspended
