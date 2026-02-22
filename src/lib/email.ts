@@ -7,19 +7,25 @@ import nodemailer from 'nodemailer';
 const host = (process.env.SMTP_HOST || 'smtp.gmail.com').trim();
 const port = parseInt((process.env.SMTP_PORT || '465').trim());
 const user = (process.env.SMTP_USER || '').trim();
-const pass = (process.env.SMTP_PASS || '').trim();
+// Industrial Clean: remove all spaces from App Password if any
+const pass = (process.env.SMTP_PASS || '').replace(/\s/g, '').trim();
 
 const transporter = nodemailer.createTransport({
   host,
   port,
-  secure: port === 465, // true for 465, false for 587
-  auth: {
-    user,
-    pass,
-  },
-  // Industrial Timeout Settings
-  connectionTimeout: 10000,
-  greetingTimeout: 10000,
+  secure: port === 465,
+  auth: { user, pass },
+  // High Reliability Handshake
+  connectionTimeout: 20000,
+  greetingTimeout: 20000,
+  socketTimeout: 20000,
+});
+
+// Immediate Connectivity Diagnostics
+transporter.verify().then(() => {
+  console.log("🏭 SMTP Transporter: Initialized and Handshaking Successful");
+}).catch((err) => {
+  console.error("❌ SMTP Transporter Failure:", err.message);
 });
 
 // INDUSTRIAL THEME COLORS
@@ -71,7 +77,7 @@ const BASE_TEMPLATE = (content: string) => `
 export async function sendMail({ to, subject, html }: { to: string, subject: string, html: string }) {
   try {
     const info = await transporter.sendMail({
-      from: process.env.SMTP_FROM || `"PayoutPower" <notifications@datamation.com>`,
+      from: process.env.SMTP_FROM || '"PayoutPower" <datamationincentive@gmail.com>',
       to,
       subject,
       html,

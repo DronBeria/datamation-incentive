@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/lib/auth-context";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -215,9 +216,11 @@ export default function DashboardPage() {
             ))}
           </div>
           <div className="p-5 border-t border-slate-50">
-            <button className="w-full text-[11px] font-bold uppercase tracking-widest text-blue-600 hover:text-blue-500 transition-all flex items-center justify-center gap-2">
-              View Activity Feed <ArrowRight className="h-3 w-3" />
-            </button>
+            <Link href="/dashboard/notifications" className="w-full">
+              <Button variant="ghost" className="w-full text-[11px] font-bold uppercase tracking-widest text-blue-600 hover:text-blue-500 transition-all flex items-center justify-center gap-2 h-auto p-0 border-none bg-transparent hover:bg-transparent">
+                View Activity Feed <ArrowRight className="h-3 w-3" />
+              </Button>
+            </Link>
           </div>
         </Card>
       </div>
