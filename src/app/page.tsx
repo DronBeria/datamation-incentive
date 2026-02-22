@@ -11,12 +11,12 @@ import {
   ShieldCheck, TrendingUp, Users, BarChart3, ArrowRight
 } from "lucide-react";
 
-const QUICK_LOGINS = [
-  { label: "admin@datamation.com", email: "admin@datamation.com", color: "text-purple-400", bg: "bg-purple-500/10 hover:bg-purple-500/20 border-purple-500/20" },
-  { label: "manager@company.com", email: "manager@company.com", color: "text-blue-400", bg: "bg-blue-500/10 hover:bg-blue-500/20 border-blue-500/20" },
-  { label: "accounts@company.com", email: "accounts@company.com", color: "text-amber-400", bg: "bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/20" },
-  { label: "sales1@company.com", email: "sales1@company.com", color: "text-emerald-400", bg: "bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/20" },
-];
+const ROLE_COLORS: Record<string, string> = {
+  admin: "text-purple-400 bg-purple-500/10 hover:bg-purple-500/20 border-purple-500/20",
+  manager: "text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 border-blue-500/20",
+  accounts: "text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/20",
+  salesperson: "text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/20",
+};
 
 const FEATURES = [
   { icon: TrendingUp, label: "Real-time Incentive Tracking", desc: "Live commission calculations across your entire team" },
@@ -39,8 +39,14 @@ export default function LoginPage() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  const [quickUsers, setQuickUsers] = useState<any[]>([]);
+
   useEffect(() => {
     if (!loading && user) router.push("/dashboard");
+    // Fetch dynamic quick logins
+    fetch("/api/auth/quick-logins").then(r => r.json()).then(d => {
+      if (Array.isArray(d)) setQuickUsers(d);
+    }).catch(() => { });
   }, [user, loading, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -337,16 +343,15 @@ export default function LoginPage() {
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Dev Quick Access</span>
                   <div className="h-px flex-1 bg-slate-200" />
                 </div>
-                <div className="grid grid-cols-2 gap-2.5">
-                  {QUICK_LOGINS.map((r) => (
+                <div className="grid grid-cols-2 gap-2">
+                  {quickUsers.map((u) => (
                     <button
-                      key={r.email}
-                      type="button"
-                      onClick={() => quickLogin(r.email)}
-                      className={`flex items-center justify-between px-4 py-3 rounded-xl border text-left transition-all active:scale-[0.97] ${r.bg}`}
+                      key={u.email}
+                      onClick={() => quickLogin(u.email)}
+                      className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all active:scale-[0.98] ${ROLE_COLORS[u.label] || "text-slate-400 bg-slate-500/10 border-slate-500/20"}`}
                     >
-                      <span className={`text-[11px] font-bold ${r.color}`}>{r.label}</span>
-                      <ArrowRight className={`h-3 w-3 ${r.color} opacity-60`} />
+                      <span className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-1">{u.label}</span>
+                      <span className="text-[11px] font-medium truncate w-full">{u.email}</span>
                     </button>
                   ))}
                 </div>

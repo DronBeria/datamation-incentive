@@ -154,7 +154,9 @@ export default function UsersPage() {
         toast.success(action === 'approved' ? "User approved and activated" : "User request rejected");
         fetchUsers();
       }
-    } catch { toast.error("Operation failed"); }
+    } catch (err: any) {
+      toast.error("Account state modification failed");
+    }
   };
 
   const handleToggleStatus = async (user: any) => {
@@ -179,7 +181,10 @@ export default function UsersPage() {
             approval_status: 'approved'
           }),
         });
-        if (res.ok) { toast.success("Account re-activated"); fetchUsers(); }
+        if (res.ok) {
+          toast.success("Staff access restored & verified");
+          fetchUsers();
+        }
       }
     } catch { toast.error("Operation failed"); }
   };
@@ -223,8 +228,13 @@ export default function UsersPage() {
 
       // Simplified status matching for Industrial Directory
       let matchStatus = true;
-      if (statusFilter === "active") matchStatus = (u.is_active && u.approval_status === 'approved');
-      else if (statusFilter === "inactive") matchStatus = !u.is_active;
+      const uActive = !!(u.is_active === true || u.is_active === 1 || u.is_active === 'TRUE');
+
+      if (statusFilter === "active") {
+        matchStatus = uActive && u.approval_status === 'approved';
+      } else if (statusFilter === "inactive") {
+        matchStatus = !uActive;
+      }
 
       return matchSearch && matchRole && matchStatus;
     });

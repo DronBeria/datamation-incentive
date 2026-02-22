@@ -55,10 +55,14 @@ export async function POST(req: NextRequest) {
         `SELECT u.*, r.name as role_name 
          FROM public.users u 
          JOIN public.roles r ON u.role_id = r.id 
-         WHERE u.email = ? AND u.is_active = TRUE 
+         WHERE u.email = ? 
          LIMIT 1`
       )
       .get(email) as any;
+
+    if (user && (!user.is_active || user.is_active === 'FALSE' || user.is_active === 0)) {
+      return NextResponse.json({ error: "Access Denied: Your account has been deactivated by an administrator." }, { status: 403 });
+    }
 
     if (user && user.approval_status === 'pending') {
       return NextResponse.json({ error: "Waiting for admin approval. Please contact support." }, { status: 403 });
