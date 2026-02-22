@@ -16,6 +16,9 @@ export const metadata: Metadata = {
   description: "PayoutPower IMS — Incentive Management Dashboard for sales teams",
 };
 
+import { LoadingProvider } from "@/components/ui/global-loader";
+import { Suspense } from "react";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -26,10 +29,14 @@ export default function RootLayout({
       <body
         className={`${outfit.variable} antialiased font-sans`}
       >
-        <AuthProvider>
-          {children}
-          <Toaster position="top-right" richColors />
-        </AuthProvider>
+        <Suspense fallback={null}>
+          <LoadingProvider>
+            <AuthProvider>
+              {children}
+              <Toaster position="top-right" richColors />
+            </AuthProvider>
+          </LoadingProvider>
+        </Suspense>
         <VisualEditsMessenger />
       </body>
     </html>
