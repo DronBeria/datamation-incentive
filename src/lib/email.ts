@@ -4,28 +4,23 @@ import nodemailer from 'nodemailer';
  * 🏭 INDUSTRIAL SMTP TRANSPORTER
  * Configured for high-reliability enterprise email flows.
  */
-const host = (process.env.SMTP_HOST || 'smtp.gmail.com').trim();
-const port = parseInt((process.env.SMTP_PORT || '465').trim());
-const user = (process.env.SMTP_USER || '').trim();
-// Industrial Clean: remove all spaces from App Password if any
-const pass = (process.env.SMTP_PASS || '').replace(/\s/g, '').trim();
+const host = (process.env.SMTP_HOST || "smtp.gmail.com").trim();
+const port = Number(process.env.SMTP_PORT) || 465;
+const user = (process.env.SMTP_USER || "").trim();
+const pass = (process.env.SMTP_PASS || "").replace(/\s/g, "").trim();
 
 const transporter = nodemailer.createTransport({
   host,
   port,
   secure: port === 465,
   auth: { user, pass },
-  // High Reliability Handshake
-  connectionTimeout: 20000,
-  greetingTimeout: 20000,
-  socketTimeout: 20000,
+  connectionTimeout: 15000,
+  greetingTimeout: 15000,
 });
 
-// Immediate Connectivity Diagnostics
-transporter.verify().then(() => {
-  console.log("🏭 SMTP Transporter: Initialized and Handshaking Successful");
-}).catch((err) => {
-  console.error("❌ SMTP Transporter Failure:", err.message);
+transporter.verify((error) => {
+  if (error) console.error("❌ SMTP Verification Error:", error.message);
+  else console.log("✅ SMTP Gateway Ready");
 });
 
 // INDUSTRIAL THEME COLORS
