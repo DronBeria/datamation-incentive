@@ -27,9 +27,12 @@ const FEATURES = [
 export default function LoginPage() {
   const { user, loading, login } = useAuth();
   const router = useRouter();
-  const [view, setView] = useState<"login" | "forgot" | "reset">("login");
+  const [view, setView] = useState<"login" | "forgot" | "reset" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [roleId, setRoleId] = useState("4");
+  const [department, setDepartment] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [resetToken, setResetToken] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -53,20 +56,50 @@ export default function LoginPage() {
     }
   };
 
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, full_name: fullName, role_id: roleId, department }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success("Account Created", {
+          description: "Your registration is pending administrator approval.",
+        });
+        setView("login");
+      } else {
+        toast.error(data.error);
+      }
+    } catch (err: any) {
+      toast.error("An unexpected error occurred.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleForgot = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const res = await fetch("/api/auth/reset-password", {
+      const res = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
       const data = await res.json();
-      if (data.token) {
-        toast.success("Reset token generated");
-        setResetToken(data.token);
-        setView("reset");
+      if (res.ok) {
+        toast.success("Recovery Initialized", {
+          description: "If an account exists, a reset code has been generated.",
+        });
+        if (data.token) {
+          // In a real app we'd email this, for now we help the user
+          setResetToken(data.token);
+          setView("reset");
+        }
       } else {
         toast.info(data.message);
       }
@@ -85,7 +118,7 @@ export default function LoginPage() {
     }
     setSubmitting(true);
     try {
-      const res = await fetch("/api/auth/reset-password/confirm", {
+      const res = await fetch("/api/auth/forgot-password", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: resetToken, newPassword }),
@@ -107,7 +140,7 @@ export default function LoginPage() {
 
   const quickLogin = (emailVal: string) => {
     setEmail(emailVal);
-    setPassword("password123");
+    setPassword("Datamation@2026");
     setView("login");
   };
 
@@ -282,6 +315,19 @@ export default function LoginPage() {
                     <>Sign In <ArrowRight className="h-3.5 w-3.5" /></>
                   )}
                 </Button>
+
+                <div className="text-center pt-2">
+                  <p className="text-xs text-slate-500 font-medium">
+                    New to the platform?{" "}
+                    <button
+                      type="button"
+                      onClick={() => setView("signup")}
+                      className="font-bold text-indigo-600 hover:text-indigo-700 underline-offset-4 hover:underline"
+                    >
+                      Create an account
+                    </button>
+                  </p>
+                </div>
               </form>
 
               {/* Quick login nodes */}
@@ -402,6 +448,101 @@ export default function LoginPage() {
                 >
                   {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Update Password"}
                 </Button>
+              </form>
+            </div>
+          )}
+          {/* ── SIGNUP FORM ── */}
+          {view === "signup" && (
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <button
+                onClick={() => setView("login")}
+                className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-all group text-sm font-medium"
+              >
+                <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
+                Back to sign in
+              </button>
+
+              <div>
+                <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-2">Registration</p>
+                <h2 className="text-3xl font-black text-slate-900 tracking-tight">Join the team.</h2>
+                <p className="text-slate-500 text-sm mt-1.5 font-medium leading-relaxed">
+                  Fill in your details to request system access.
+                </p>
+              </div>
+
+              <form onSubmit={handleSignup} className="grid grid-cols-1 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Full Name</label>
+                  <Input
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Enter your full name"
+                    required
+                    className="h-11 border-slate-200 bg-white rounded-xl px-4 font-medium"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Work Email</label>
+                  <Input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@company.com"
+                    required
+                    className="h-11 border-slate-200 bg-white rounded-xl px-4 font-medium"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Desired Role</label>
+                    <select
+                      value={roleId}
+                      onChange={(e) => setRoleId(e.target.value)}
+                      className="w-full h-11 border-slate-200 bg-white rounded-xl px-3 text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-sm"
+                    >
+                      <option value="4">Salesperson</option>
+                      <option value="2">Manager</option>
+                      <option value="3">Accounts</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Department</label>
+                    <Input
+                      type="text"
+                      value={department}
+                      onChange={(e) => setDepartment(e.target.value)}
+                      placeholder="e.g. Sales"
+                      className="h-11 border-slate-200 bg-white rounded-xl px-4 font-medium"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Password</label>
+                  <Input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Set a secure password"
+                    required
+                    className="h-11 border-slate-200 bg-white rounded-xl px-4 font-medium"
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl shadow-lg mt-2 transition-all"
+                >
+                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Request Approval"}
+                </Button>
+
+                <p className="text-[10px] text-center text-slate-400 font-medium px-4">
+                  By clicking Request Approval, your profile will be indexed and sent to the administrator for verification.
+                </p>
               </form>
             </div>
           )}

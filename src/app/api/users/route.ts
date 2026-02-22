@@ -13,7 +13,7 @@ export async function GET() {
 
   let query = `
     SELECT 
-      u.id, u.email, u.full_name, u.department, u.is_active, u.created_at, u.manager_id,
+      u.id, u.email, u.full_name, u.department, u.is_active, u.approval_status, u.created_at, u.manager_id,
       r.name as role,
       sch.name as scheme_name,
       m.full_name as manager_name
@@ -107,8 +107,8 @@ export async function PUT(req: Request) {
   }
 
   // 1. Update basic info
-  let sql = "UPDATE public.users SET email = ?, full_name = ?, role_id = ?, department = ?, is_active = ?, manager_id = ? WHERE id = ?";
-  let params = [email, full_name, role_id, department, is_active, body.manager_id || null, id];
+  let sql = "UPDATE public.users SET email = ?, full_name = ?, role_id = ?, department = ?, is_active = ?, manager_id = ?, approval_status = ? WHERE id = ?";
+  let params = [email, full_name, role_id, department, is_active, body.manager_id || null, body.approval_status || 'approved', id];
 
   // If session is manager, override manager_id back to self unless they are editing themselves (unlikely here)
   if (session.role === "manager") {

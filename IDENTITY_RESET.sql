@@ -42,6 +42,16 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
 
 DO $$ 
 BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='users' AND column_name='approval_status') THEN
+        ALTER TABLE public.users ADD COLUMN approval_status TEXT DEFAULT 'approved' CHECK(approval_status IN ('pending', 'approved', 'rejected'));
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='users' AND column_name='reset_token') THEN
+        ALTER TABLE public.users ADD COLUMN reset_token TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='users' AND column_name='reset_token_expiry') THEN
+        ALTER TABLE public.users ADD COLUMN reset_token_expiry TIMESTAMPTZ;
+    END IF;
+
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='audit_logs' AND column_name='old_value') THEN
         ALTER TABLE public.audit_logs ADD COLUMN old_value TEXT;
     END IF;

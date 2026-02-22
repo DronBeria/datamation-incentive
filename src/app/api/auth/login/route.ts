@@ -60,6 +60,14 @@ export async function POST(req: NextRequest) {
       )
       .get(email) as any;
 
+    if (user && user.approval_status === 'pending') {
+      return NextResponse.json({ error: "Waiting for admin approval. Please contact support." }, { status: 403 });
+    }
+
+    if (user && user.approval_status === 'rejected') {
+      return NextResponse.json({ error: "Access denied. Your signup request has been rejected." }, { status: 403 });
+    }
+
     // Constant-time comparison — always run bcrypt to prevent timing attacks
     const dummyHash = "$2b$10$invalidsaltinvalidsaltinvalidsal";
     const isValid = user

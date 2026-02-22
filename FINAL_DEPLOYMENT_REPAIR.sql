@@ -43,6 +43,9 @@ CREATE TABLE IF NOT EXISTS public.users (
   manager_id BIGINT REFERENCES public.users(id),
   department TEXT DEFAULT '',
   is_active BOOLEAN DEFAULT TRUE,
+  approval_status TEXT DEFAULT 'approved' CHECK(approval_status IN ('pending', 'approved', 'rejected')),
+  reset_token TEXT,
+  reset_token_expiry TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

@@ -61,6 +61,7 @@ export default function UsersPage() {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState<"directory" | "approvals">("directory");
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
   const [submitting, setSubmitting] = useState(false);
@@ -128,6 +129,27 @@ export default function UsersPage() {
     finally { setSubmitting(false); }
   };
 
+  const handleApproval = async (id: string, action: 'approved' | 'rejected') => {
+    const user = users.find(u => u.id === id);
+    if (!user) return;
+    try {
+      const res = await fetch("/api/users", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...user,
+          role_id: ROLE_IDS[user.role] || "4",
+          approval_status: action,
+          is_active: action === 'approved'
+        }),
+      });
+      if (res.ok) {
+        toast.success(action === 'approved' ? "User approved and activated" : "User request rejected");
+        fetchUsers();
+      }
+    } catch { toast.error("Operation failed"); }
+  };
+
   const handleDelete = async (id: string, role: string) => {
     try {
       const res = await fetch(`/api/users?id=${id}&role=${role}`, { method: "DELETE" });
@@ -137,6 +159,10 @@ export default function UsersPage() {
 
   const filtered = useMemo(() => {
     return users.filter(u => {
+      const isPending = u.approval_status === 'pending';
+      if (activeTab === "approvals") return isPending;
+      if (isPending) return false; // Hide pending users from main directory
+
       const matchSearch = u.full_name.toLowerCase().includes(search.toLowerCase()) ||
         u.email.toLowerCase().includes(search.toLowerCase()) ||
         (u.department || "").toLowerCase().includes(search.toLowerCase());
@@ -144,13 +170,13 @@ export default function UsersPage() {
       const matchStatus = statusFilter === "all" || (statusFilter === "active" ? u.is_active : !u.is_active);
       return matchSearch && matchRole && matchStatus;
     });
-  }, [users, search, roleFilter, statusFilter]);
+  }, [users, search, roleFilter, statusFilter, activeTab]);
 
   const stats = useMemo(() => ({
     total: users.length,
-    active: users.filter(u => u.is_active).length,
+    active: users.filter(u => u.is_active && u.approval_status === 'approved').length,
     salesperson: users.filter(u => u.role === "salesperson").length,
-    inactive: users.filter(u => !u.is_active).length,
+    pending: users.filter(u => u.approval_status === 'pending').length,
   }), [users]);
 
   const handleExport = () => {
@@ -182,7 +208,7 @@ export default function UsersPage() {
           { label: "Total Users", value: stats.total, icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
           { label: "Active", value: stats.active, icon: UserCheck, color: "text-emerald-600", bg: "bg-emerald-50" },
           { label: "Sales Team", value: stats.salesperson, icon: Sparkles, color: "text-indigo-600", bg: "bg-indigo-50" },
-          { label: "Inactive", value: stats.inactive, icon: UserX, color: "text-rose-600", bg: "bg-rose-50" },
+          { label: "Pending Approvals", value: stats.pending, icon: Clock, color: "text-amber-600", bg: "bg-amber-50" },
         ].map((s, i) => (
           <Card key={i} className="p-5 border border-slate-100 shadow-sm bg-white rounded-2xl group relative overflow-hidden transition-all hover:shadow-md">
             <div className="relative z-10">
@@ -196,43 +222,66 @@ export default function UsersPage() {
         ))}
       </div>
 
-      {/* Filters Hub */}
-      <Card className="p-4 border border-slate-100 shadow-sm bg-white rounded-2xl">
-        <div className="flex flex-col xl:flex-row gap-4">
-          <div className="relative flex-[3]">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <Input
-              placeholder="Search by name, email or department..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="pl-10 h-10 border-slate-100 bg-slate-50/50 rounded-xl text-sm focus-visible:ring-blue-600 shadow-none border"
-            />
+      {/* Navigation Tabs */}
+      <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl w-fit border border-slate-200 shadow-inner">
+        <button
+          onClick={() => setActiveTab("directory")}
+          className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${activeTab === "directory" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+        >
+          Directory
+        </button>
+        <button
+          onClick={() => setActiveTab("approvals")}
+          className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all relative ${activeTab === "approvals" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+        >
+          Approval Queue
+          {stats.pending > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 h-4 w-4 bg-red-500 text-[10px] text-white flex items-center justify-center rounded-full font-bold ring-2 ring-white">
+              {stats.pending}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Filters Hub (Only in directory) */}
+      {activeTab === "directory" && (
+        <Card className="p-4 border border-slate-100 shadow-sm bg-white rounded-2xl">
+          <div className="flex flex-col xl:flex-row gap-4">
+            <div className="relative flex-[3]">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder="Search by name, email or department..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="pl-10 h-10 border-slate-100 bg-slate-50/50 rounded-xl text-sm focus-visible:ring-blue-600 shadow-none border"
+              />
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4 flex-2">
+              <Select value={roleFilter} onValueChange={setRoleFilter}>
+                <SelectTrigger className="h-10 border-slate-100 bg-slate-50/50 rounded-xl text-xs font-semibold px-4 flex-1">
+                  <SelectValue placeholder="All Roles" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border border-slate-100 shadow-lg p-1 bg-white">
+                  <SelectItem value="all" className="rounded-lg text-xs font-medium">All Roles</SelectItem>
+                  {Object.keys(ROLE_CONFIG).map(r => (
+                    <SelectItem key={r} value={r} className="rounded-lg text-xs font-medium capitalize">{r}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="h-10 border-slate-100 bg-slate-50/50 rounded-xl text-xs font-semibold px-4 flex-1">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border border-slate-100 shadow-lg p-1 bg-white">
+                  <SelectItem value="all" className="rounded-lg text-xs font-medium">All Status</SelectItem>
+                  <SelectItem value="active" className="rounded-lg text-xs font-medium text-emerald-600">Active</SelectItem>
+                  <SelectItem value="inactive" className="rounded-lg text-xs font-medium text-rose-600">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          <div className="flex flex-col sm:flex-row gap-4 flex-2">
-            <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger className="h-10 border-slate-100 bg-slate-50/50 rounded-xl text-xs font-semibold px-4 flex-1">
-                <SelectValue placeholder="All Roles" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border border-slate-100 shadow-lg p-1 bg-white">
-                <SelectItem value="all" className="rounded-lg text-xs font-medium">All Roles</SelectItem>
-                {Object.keys(ROLE_CONFIG).map(r => (
-                  <SelectItem key={r} value={r} className="rounded-lg text-xs font-medium capitalize">{r}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-10 border-slate-100 bg-slate-50/50 rounded-xl text-xs font-semibold px-4 flex-1">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border border-slate-100 shadow-lg p-1 bg-white">
-                <SelectItem value="all" className="rounded-lg text-xs font-medium">All Status</SelectItem>
-                <SelectItem value="active" className="rounded-lg text-xs font-medium text-emerald-600">Active</SelectItem>
-                <SelectItem value="inactive" className="rounded-lg text-xs font-medium text-rose-600">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </Card>
+        </Card>
+      )}
 
       {/* Main Directory */}
       {loading ? (
@@ -307,7 +356,25 @@ export default function UsersPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right pr-6">
-                        {currentUser?.role === "admin" && (
+                        {activeTab === "approvals" ? (
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleApproval(u.id, 'rejected')}
+                              className="h-8 text-[10px] font-bold uppercase text-rose-600 border-rose-100 hover:bg-rose-50 rounded-lg px-3"
+                            >
+                              Reject
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => handleApproval(u.id, 'approved')}
+                              className="h-8 text-[10px] font-bold uppercase bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-3 shadow-sm"
+                            >
+                              Approve
+                            </Button>
+                          </div>
+                        ) : currentUser?.role === "admin" && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-slate-100 rounded-lg">
