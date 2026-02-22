@@ -35,7 +35,11 @@ export async function GET() {
                 RETURN COALESCE(result, '[]'::jsonb);
             END;
             $$;
-        `).run();
+           DO $$ BEGIN
+           IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='users' AND column_name='last_login') THEN
+        ALTER TABLE public.users ADD COLUMN last_login TIMESTAMPTZ;
+    END IF;
+END $$;`).run();
 
         // Roles and User reset logic continues...
         // Ensure roles exist (use OVERRIDING SYSTEM VALUE for GENERATED ALWAYS AS IDENTITY)

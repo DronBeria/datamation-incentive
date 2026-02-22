@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
-import { sendUserStatusUpdate } from "@/lib/email";
+import { sendUserStatusUpdate, sendWelcomeEmail } from "@/lib/email";
 import bcrypt from "bcryptjs";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +24,9 @@ export async function GET() {
     LEFT JOIN public.user_scheme_assignments usa ON u.id = usa.user_id AND (usa.end_date IS NULL OR usa.end_date >= CURRENT_DATE)
     LEFT JOIN public.incentive_schemes sch ON usa.scheme_id = sch.id
   `;
+
+  // Explicitly select last_login if it exists
+  query = query.replace('u.manager_id,', 'u.manager_id, u.last_login,');
 
   const params: any[] = [];
   if (session.role === "manager") {
@@ -81,9 +84,12 @@ export async function POST(req: Request) {
     ).run(userId, scheme_id);
   }
 
-  await db.prepare(
-    "INSERT INTO public.audit_logs (user_id, action, entity_type, entity_id, new_value) VALUES (?, 'CREATE', 'user', ?, ?)"
-  ).run(session.id, userId, JSON.stringify({ email, full_name, role_id, manager_id: managerId }));
+  // 4. Send Welcome Email (Non-blocking)
+  try {
+    await sendWelcomeEmail(email, full_name, password);
+  } catch (e) {
+    console.warn("Welcome email deferred:", e);
+  }
 
   return NextResponse.json({ id: userId, message: "Team member successfully indexed" });
 }
@@ -187,25 +193,38 @@ export async function DELETE(req: Request) {
     }
   }
 
+  const purgeRequested = searchParams.get("purge") === "true";
+
   try {
-    // Check for sales logs
-    const hasLogs = await db.prepare("SELECT id FROM public.sales_logs WHERE salesperson_id = ? LIMIT 1").get(id);
-    if (hasLogs) {
-      await db.prepare("UPDATE public.users SET is_active = FALSE WHERE id = ?").run(id);
-      return NextResponse.json({ message: "User deactivated due to existing historical records" });
+    // 1. Thorough Data Integrity Check
+    const hasSales = await db.prepare("SELECT id FROM public.sales_logs WHERE salesperson_id = ? LIMIT 1").get(id);
+    const hasAdjustments = await db.prepare("SELECT id FROM public.adjustments WHERE user_id = ? LIMIT 1").get(id);
+    const hasBeenAudited = await db.prepare("SELECT id FROM public.audit_logs WHERE user_id = ? LIMIT 1").get(id);
+
+    const hasHistory = !!(hasSales || hasAdjustments || hasBeenAudited);
+
+    if (hasHistory && !purgeRequested) {
+      // Robust Soft-Delete (Industrial Standard)
+      await db.prepare("UPDATE public.users SET is_active = FALSE, approval_status = 'rejected' WHERE id = ?").run(id);
+      return NextResponse.json({
+        message: "User account deactivated (Historical audit records found)",
+        type: 'deactivated'
+      });
     }
 
-    // Hard delete if no logs
+    // 2. Safe Hard Delete if specifically requested or no history exists
     await db.prepare("DELETE FROM public.user_scheme_assignments WHERE user_id = ?").run(id);
+    await db.prepare("DELETE FROM public.audit_logs WHERE entity_type = 'user' AND entity_id = ?").run(id);
     await db.prepare("DELETE FROM public.users WHERE id = ?").run(id);
 
     await db.prepare(
-      "INSERT INTO public.audit_logs (user_id, action, entity_type, entity_id) VALUES (?, 'DELETE', 'user', ?)"
-    ).run(session.id, id);
+      "INSERT INTO public.audit_logs (user_id, action, entity_type, entity_id, new_value) VALUES (?, 'PURGE', 'user', ?, ?)"
+    ).run(session.id, id, JSON.stringify({ reason: "Manual deletion requested by admin" }));
 
-    return NextResponse.json({ message: "User record purged" });
+    return NextResponse.json({ message: "User record identifying data purged successfully", type: 'purged' });
   } catch (err: any) {
+    console.error("[USER_DELETE_ERROR]", err.message);
     await db.prepare("UPDATE public.users SET is_active = FALSE WHERE id = ?").run(id);
-    return NextResponse.json({ message: "User deactivated due to integrity constraints" });
+    return NextResponse.json({ message: "System failure during purge: User status locked to inactive", error: err.message }, { status: 500 });
   }
 }

@@ -189,3 +189,35 @@ export async function sendUserStatusUpdate(userEmail: string, userName: string, 
 
   return sendMail({ to: userEmail, subject: `[PayoutPower] Identity Status Update: ${status.charAt(0).toUpperCase() + status.slice(1)}`, html });
 }
+/**
+ * 🚀 WELCOME EMAIL FOR NEW STAFF
+ */
+export async function sendWelcomeEmail(to: string, userName: string, password: string) {
+  const html = BASE_TEMPLATE(`
+        <p style="margin: 0; font-size: 18px; font-weight: 700;">Welcome to the Team, ${userName}!</p>
+        <p style="margin: 12px 0 0; color: ${COLORS.slate}; font-size: 15px;">A new account has been provisioned for you on the PayoutPower Incentive Management Suite.</p>
+        
+        <div style="background: ${COLORS.bg}; border-radius: 16px; padding: 24px; margin: 32px 0; border: 1px solid ${COLORS.border};">
+            <p style="margin: 0 0 16px; font-size: 11px; font-weight: 700; color: ${COLORS.slate}; text-transform: uppercase;">Your Access Credentials</p>
+            <div style="margin-bottom: 12px;">
+                <p style="margin: 0; font-size: 10px; font-weight: 700; color: ${COLORS.slate}; uppercase;">Portal URL</p>
+                <p style="margin: 0; font-size: 14px; font-weight: 700; color: ${COLORS.primary};">${process.env.NEXT_PUBLIC_APP_URL || 'https://datamation-incentive.vercel.app'}</p>
+            </div>
+            <div style="margin-bottom: 12px;">
+                <p style="margin: 0; font-size: 10px; font-weight: 700; color: ${COLORS.slate}; uppercase;">Email Address</p>
+                <p style="margin: 0; font-size: 14px; font-weight: 700;">${to}</p>
+            </div>
+            <div>
+                <p style="margin: 0; font-size: 10px; font-weight: 700; color: ${COLORS.slate}; uppercase;">One-Time Password</p>
+                <code style="font-size: 14px; font-weight: 700; color: ${COLORS.dark}; background: #ffffff; padding: 4px 8px; border-radius: 6px; border: 1px solid ${COLORS.border};">${password}</code>
+            </div>
+        </div>
+
+        <div style="text-align: center;">
+            <a href="${process.env.NEXT_PUBLIC_APP_URL || '#'}" style="display: inline-block; padding: 14px 32px; background: ${COLORS.dark}; color: #ffffff; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 14px;">Log In Now</a>
+            <p style="margin-top: 24px; font-size: 12px; color: ${COLORS.slate};">For security reasons, we strongly recommend updating your password immediately after your first login.</p>
+        </div>
+    `);
+
+  return sendMail({ to, subject: `[PayoutPower] Welcome! Your Staff Account is Ready`, html });
+}

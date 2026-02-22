@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
+import { sendIncentiveUpdate } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +55,17 @@ export async function POST(req: NextRequest) {
         await db.prepare(
             "INSERT INTO public.audit_logs (user_id, action, entity_type, entity_id, new_value) VALUES (?, 'CREATE', 'adjustment', ?, ?)"
         ).run(session.id, result.lastInsertRowid, JSON.stringify(body));
+
+        // Send Notification (Non-blocking)
+        try {
+            const staff = await db.prepare("SELECT email, full_name FROM public.users WHERE id = ?").get(user_id) as any;
+            if (staff && staff.email) {
+                const displayAction = type === 'bonus' ? 'Performance Bonus Applied' : 'Manual Deduction/Adjustment';
+                await sendIncentiveUpdate(staff.email, staff.full_name, displayAction, amount);
+            }
+        } catch (e) {
+            console.warn("Incentive update email deferred:", e);
+        }
 
         return NextResponse.json({ id: result.lastInsertRowid, message: "Fiscal adjustment successfully indexed" });
     } catch (err: any) {

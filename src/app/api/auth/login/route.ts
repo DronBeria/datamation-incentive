@@ -95,12 +95,18 @@ export async function POST(req: NextRequest) {
       department: user.department,
     });
 
-    // Log successful login
+    // Log successful login and update activity timestamp
     try {
+      await db.prepare(
+        "UPDATE public.users SET last_login = NOW() WHERE id = ?"
+      ).run(user.id);
+
       await db.prepare(
         "INSERT INTO audit_logs (user_id, action, entity_type, entity_id, ip_address) VALUES (?, 'LOGIN', 'auth', ?, ?)"
       ).run(user.id, user.id, ip);
-    } catch { /* non-blocking */ }
+    } catch (e) {
+      console.warn("Login activity logging failure:", e);
+    }
 
     const res = NextResponse.json({
       user: {

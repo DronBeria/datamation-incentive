@@ -71,6 +71,10 @@ export default function UsersPage() {
     department: "", scheme_id: "", manager_id: "", is_active: true,
     approval_status: "approved"
   });
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<any>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isPurging, setIsPurging] = useState(false);
 
   const fetchUsers = () => {
     setLoading(true);
@@ -156,9 +160,13 @@ export default function UsersPage() {
   const handleToggleStatus = async (user: any) => {
     try {
       if (user.is_active) {
-        // Deactivate/Purge logic
-        const res = await fetch(`/api/users?id=${user.id}&role=${user.role}`, { method: "DELETE" });
-        if (res.ok) { toast.success("Access status updated"); fetchUsers(); }
+        // Deactivate (Industrial safe mode)
+        const res = await fetch(`/api/users?id=${user.id}`, { method: "DELETE" });
+        const data = await res.json();
+        if (res.ok) {
+          toast.success(data.message || "User account deactivated");
+          fetchUsers();
+        }
       } else {
         // Re-activate logic
         const res = await fetch("/api/users", {
@@ -174,6 +182,27 @@ export default function UsersPage() {
         if (res.ok) { toast.success("Account re-activated"); fetchUsers(); }
       }
     } catch { toast.error("Operation failed"); }
+  };
+
+  const handleRemoveUser = async () => {
+    if (!userToDelete || deleteConfirmText !== userToDelete.email) {
+      return toast.error("Please type the user email to confirm");
+    }
+    setIsPurging(true);
+    try {
+      const res = await fetch(`/api/users?id=${userToDelete.id}&purge=true`, { method: "DELETE" });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || "Record purged successfully");
+        setShowDeleteModal(false);
+        setUserToDelete(null);
+        setDeleteConfirmText("");
+        fetchUsers();
+      } else {
+        toast.error(data.error || "Purge failed");
+      }
+    } catch { toast.error("Critical error during purge"); }
+    finally { setIsPurging(false); }
   };
 
   const filtered = useMemo(() => {
@@ -318,6 +347,7 @@ export default function UsersPage() {
                   <TableHead className="py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Role</TableHead>
                   <TableHead className="py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Grouping & Manager</TableHead>
                   <TableHead className="py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Status</TableHead>
+                  <TableHead className="py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Activity</TableHead>
                   <TableHead className="py-4 pr-6 text-[11px] font-bold text-slate-500 uppercase tracking-widest text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -374,6 +404,14 @@ export default function UsersPage() {
                           {u.is_active ? "Active" : "Inactive"}
                         </Badge>
                       </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-bold text-slate-600 truncate">
+                            {u.last_login ? new Date(u.last_login).toLocaleDateString() : "Never"}
+                          </span>
+                          <span className="text-[9px] text-slate-400 font-medium">Joined {new Date(u.created_at).toLocaleDateString()}</span>
+                        </div>
+                      </TableCell>
                       <TableCell className="text-right pr-6">
                         {activeTab === "approvals" ? (
                           <div className="flex items-center justify-end gap-2">
@@ -404,12 +442,18 @@ export default function UsersPage() {
                               <DropdownMenuItem onClick={() => openEdit(u)} className="h-10 rounded-lg text-xs font-medium text-slate-600 flex items-center gap-2 cursor-pointer focus:bg-slate-50 transition-all">
                                 <Edit2 className="h-3.5 w-3.5" /> Edit Profile
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleToggleStatus(u)} className={`h-10 rounded-lg text-xs font-medium flex items-center gap-2 cursor-pointer focus:bg-slate-50 transition-all ${u.is_active ? "text-rose-600" : "text-emerald-600"}`}>
+                              <DropdownMenuItem onClick={() => handleToggleStatus(u)} className={`h-10 rounded-lg text-xs font-medium flex items-center gap-2 cursor-pointer focus:bg-slate-50 transition-all ${u.is_active ? "text-amber-600" : "text-emerald-600"}`}>
                                 {u.is_active ? (
-                                  <><UserX className="h-3.5 w-3.5" /> Disable User</>
+                                  <><UserX className="h-3.5 w-3.5" /> Deactivate Account</>
                                 ) : (
-                                  <><UserCheck className="h-3.5 w-3.5" /> Enable User</>
+                                  <><UserCheck className="h-3.5 w-3.5" /> Enable Access</>
                                 )}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => { setUserToDelete(u); setDeleteConfirmText(""); setShowDeleteModal(true); }}
+                                className="h-10 rounded-lg text-xs font-bold text-rose-600 flex items-center gap-2 cursor-pointer focus:bg-rose-50 transition-all"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" /> Remove Permanently
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -593,6 +637,46 @@ export default function UsersPage() {
                 className="h-10 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-sm shadow-sm disabled:opacity-50 transition-all"
               >
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : (modalMode === "create" ? "Create User" : "Save Changes")}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* Permanent Removal Confirmation */}
+      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <DialogContent className="max-w-[440px] p-6 rounded-2xl bg-white border border-rose-100 shadow-2xl">
+          <div className="flex flex-col items-center text-center space-y-4">
+            <div className="h-14 w-14 rounded-full bg-rose-50 flex items-center justify-center border border-rose-100 mb-2">
+              <Trash2 className="h-7 w-7 text-rose-600" />
+            </div>
+            <div>
+              <DialogTitle className="text-xl font-black text-slate-900 tracking-tight">Industrial Removal</DialogTitle>
+              <p className="text-sm text-slate-500 mt-2 leading-relaxed">
+                You are about to permanently purge <span className="font-bold text-slate-900">{userToDelete?.full_name}</span>.
+                This action is <span className="text-rose-600 font-bold uppercase tracking-wider">irreversible</span> and will wipe all indexed profile data.
+              </p>
+            </div>
+
+            <div className="w-full space-y-3 pt-2">
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-left">Confirm Email to Proceed</div>
+              <Input
+                value={deleteConfirmText}
+                onChange={e => setDeleteConfirmText(e.target.value)}
+                placeholder={userToDelete?.email}
+                className="h-11 border-rose-200 focus-visible:ring-rose-500 rounded-xl bg-rose-50/10 font-medium text-slate-900"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 w-full pt-4">
+              <Button variant="outline" onClick={() => setShowDeleteModal(false)} className="h-11 rounded-xl text-sm font-bold border-slate-200">
+                Cancel
+              </Button>
+              <Button
+                onClick={handleRemoveUser}
+                disabled={isPurging || deleteConfirmText !== userToDelete?.email}
+                className="h-11 rounded-xl text-sm font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-lg shadow-rose-100 disabled:opacity-30"
+              >
+                {isPurging ? <Loader2 className="h-4 w-4 animate-spin" /> : "Purge Account"}
               </Button>
             </div>
           </div>
