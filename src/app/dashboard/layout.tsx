@@ -22,6 +22,7 @@ import {
   Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SyncStatusIcon } from "@/components/ui/sync-status";
 
 const NAV_ITEMS: Record<string, { label: string; href: string; icon: any; roles: string[] }[]> = {
   main: [
@@ -165,6 +166,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           <div className="flex items-center gap-3">
+            <SyncStatusIcon />
             <Link href="/dashboard/notifications" className="relative h-9 w-9 rounded-lg hover:bg-slate-50 flex items-center justify-center transition-colors border border-slate-100">
               <Bell className="h-4 w-4 text-slate-400" />
               <div className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-red-500 ring-2 ring-white" />

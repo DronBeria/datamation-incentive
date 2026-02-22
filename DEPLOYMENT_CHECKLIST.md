@@ -36,5 +36,12 @@ Add these keys to your [Vercel Project Settings > Environment Variables](https:/
 2. Visit the `/api/debug/seed` endpoint (once logged in as admin) or run the SQL script to ensure data is present.
 3. Attempt to create a **Scheme**, then a **Sale**, then an **Incentive Batch** to verify the full financial lifecycle.
 
+### 6. Desktop Distribution (EXE)
+- [ ] **Verify Vercel URL**: Ensure `electron/main.js` points to your production domain (`datamation-incentive.vercel.app`).
+- [ ] **Build Command**: Execute `npm run dist` from the project root.
+- [ ] **Verification**: Find the portable installer in the `/dist` directory.
+- [ ] **Data Sync Test**: Open the app and verify that data synchronizes with the cloud via Vercel.
+- [ ] **Local Persistence**: Verify that local backups are created in `Documents/PayoutPower/Backups`.
+
 ---
-**Handover Status**: All core features (Multi-manager, Scheme lifecycle, Batch transactions) are complete and tested.
+**Handover Status**: All core features (Multi-manager, Scheme lifecycle, Batch transactions, and Industrial Electron wrapper) are complete and tested.

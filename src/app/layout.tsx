@@ -17,6 +17,7 @@ export const metadata: Metadata = {
 };
 
 import { LoadingProvider } from "@/components/ui/global-loader";
+import { SyncProvider } from "@/components/ui/sync-status";
 import { Suspense } from "react";
 
 export default function RootLayout({
@@ -30,12 +31,14 @@ export default function RootLayout({
         className={`${outfit.variable} antialiased font-sans`}
       >
         <Suspense fallback={null}>
-          <LoadingProvider>
-            <AuthProvider>
-              {children}
-              <Toaster position="top-right" richColors />
-            </AuthProvider>
-          </LoadingProvider>
+          <SyncProvider>
+            <LoadingProvider>
+              <AuthProvider>
+                {children}
+                <Toaster position="top-right" richColors />
+              </AuthProvider>
+            </LoadingProvider>
+          </SyncProvider>
         </Suspense>
         <VisualEditsMessenger />
       </body>

@@ -1,5 +1,5 @@
 {
-  "name": "nextjs-new",
+  "name": "payout-power",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -84,13 +84,19 @@
     "electron-builder": "^24.13.3"
   },
   "build": {
-    "appId": "com.arcwebworks.payoutpower",
+    "appId": "com.datamation.payoutpower",
     "productName": "PayoutPower",
+    "copyright": "Copyright © 2026 Datamation",
     "directories": {
       "output": "dist"
     },
+    "files": [
+      "electron/**/*",
+      "package.json"
+    ],
     "win": {
-      "target": "portable"
+      "target": "portable",
+      "publisherName": "Datamation"
     }
   }
 }

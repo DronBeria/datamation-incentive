@@ -8,27 +8,33 @@ export const syncToLocal = async (entity: string, data: any) => {
     const isElectron = typeof window !== 'undefined' && window.process && (window.process as any).type === 'renderer' ||
         (typeof window !== 'undefined' && (window as any).electron);
 
-    if (!isElectron) {
-        // If not in electron, we might store in IndexedDB or just skip
-        // For Vercel deployment, we just skip local file system sync
-        return;
+    if (!isElectron) return;
+
+    // Emit 'saving' status
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('hybrid-sync', { detail: 'saving' }));
     }
 
     try {
         // 2. Call the Electron IPC bridge to write to disk
-        // This expects 'electron' to be exposed via preload script
         if ((window as any).electron?.saveBackup) {
             await (window as any).electron.saveBackup(entity, data);
-            console.log(`[HybridSync] Local backup created for ${entity}`);
+
+            // Emit success
+            if (typeof window !== 'undefined') {
+                setTimeout(() => {
+                    window.dispatchEvent(new CustomEvent('hybrid-sync', { detail: 'saved' }));
+                }, 800); // Visual sustain
+            }
         }
     } catch (err) {
         console.error("[HybridSync] Local backup failed:", err);
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('hybrid-sync', { detail: 'error' }));
+        }
     }
 };
 
-/**
- * Checks if the system is running in standalone desktop mode
- */
 export const isDesktopMode = () => {
     return typeof window !== 'undefined' && (!!(window as any).electron || navigator.userAgent.toLowerCase().includes('electron'));
 };

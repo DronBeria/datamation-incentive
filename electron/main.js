@@ -6,10 +6,10 @@ let mainWindow;
 
 function createWindow() {
     mainWindow = new BrowserWindow({
-        width: 1280,
-        height: 800,
-        title: "PayoutPower Industrial Suite",
-        icon: path.join(__dirname, 'icon.png'), // We'll need an icon later
+        width: 1440,
+        height: 900,
+        title: "PayoutPower — Industrial Incentive Suite",
+        autoHideMenuBar: true, // Professional desktop look
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             nodeIntegration: false,
@@ -17,9 +17,10 @@ function createWindow() {
         },
     });
 
-    // During development, we can point to localhost
-    // For production, this will be your Vercel URL
-    const startUrl = process.env.VERCEL_URL || 'http://localhost:3000';
+    // Pointing to your production Vercel deployment
+    const productionUrl = 'https://datamation-incentive.vercel.app';
+    const startUrl = process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : productionUrl;
+
     mainWindow.loadURL(startUrl);
 
     // Open external links in the default browser
