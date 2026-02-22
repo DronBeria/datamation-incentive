@@ -215,7 +215,7 @@ export default function UsersPage() {
         u.email.toLowerCase().includes(search.toLowerCase()) ||
         (u.department || "").toLowerCase().includes(search.toLowerCase());
       const matchRole = roleFilter === "all" || u.role === roleFilter;
-      const matchStatus = statusFilter === "all" || (statusFilter === "active" ? u.is_active : !u.is_active);
+      const matchStatus = statusFilter === "all" || (statusFilter === "active" ? !!u.is_active : !u.is_active);
       return matchSearch && matchRole && matchStatus;
     });
   }, [users, search, roleFilter, statusFilter, activeTab]);
@@ -431,7 +431,7 @@ export default function UsersPage() {
                               Approve
                             </Button>
                           </div>
-                        ) : currentUser?.role === "admin" && (
+                        ) : (currentUser?.role === "admin" || (currentUser?.role === "manager" && u.manager_id === currentUser?.id)) && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-slate-100 rounded-lg">
@@ -449,12 +449,14 @@ export default function UsersPage() {
                                   <><UserCheck className="h-3.5 w-3.5" /> Enable Access</>
                                 )}
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => { setUserToDelete(u); setDeleteConfirmText(""); setShowDeleteModal(true); }}
-                                className="h-10 rounded-lg text-xs font-bold text-rose-600 flex items-center gap-2 cursor-pointer focus:bg-rose-50 transition-all"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" /> Remove Permanently
-                              </DropdownMenuItem>
+                              {currentUser?.role === "admin" && (
+                                <DropdownMenuItem
+                                  onClick={() => { setUserToDelete(u); setDeleteConfirmText(""); setShowDeleteModal(true); }}
+                                  className="h-10 rounded-lg text-xs font-bold text-rose-600 flex items-center gap-2 cursor-pointer focus:bg-rose-50 transition-all"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" /> Remove Permanently
+                                </DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         )}

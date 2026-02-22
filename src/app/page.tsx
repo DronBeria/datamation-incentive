@@ -12,10 +12,10 @@ import {
 } from "lucide-react";
 
 const QUICK_LOGINS = [
-  { label: "Admin", email: "admin@datamation.com", color: "text-purple-400", bg: "bg-purple-500/10 hover:bg-purple-500/20 border-purple-500/20" },
-  { label: "Manager", email: "manager@company.com", color: "text-blue-400", bg: "bg-blue-500/10 hover:bg-blue-500/20 border-blue-500/20" },
-  { label: "Accounts", email: "accounts@company.com", color: "text-amber-400", bg: "bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/20" },
-  { label: "Salesperson", email: "sales1@company.com", color: "text-emerald-400", bg: "bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/20" },
+  { label: "admin@datamation.com", email: "admin@datamation.com", color: "text-purple-400", bg: "bg-purple-500/10 hover:bg-purple-500/20 border-purple-500/20" },
+  { label: "manager@company.com", email: "manager@company.com", color: "text-blue-400", bg: "bg-blue-500/10 hover:bg-blue-500/20 border-blue-500/20" },
+  { label: "accounts@company.com", email: "accounts@company.com", color: "text-amber-400", bg: "bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/20" },
+  { label: "sales1@company.com", email: "sales1@company.com", color: "text-emerald-400", bg: "bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/20" },
 ];
 
 const FEATURES = [
@@ -140,7 +140,7 @@ export default function LoginPage() {
 
   const quickLogin = (emailVal: string) => {
     setEmail(emailVal);
-    setPassword("Datamation@2026");
+    setPassword(""); // Only show the email, let user type password if needed or just clear it
     setView("login");
   };
 
