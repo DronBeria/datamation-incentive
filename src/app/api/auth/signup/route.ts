@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { sendAdminSignupNotification } from "@/lib/email";
 import bcrypt from "bcryptjs";
 
 export const dynamic = "force-dynamic";
@@ -44,15 +45,18 @@ export async function POST(req: NextRequest) {
 
         // Industrial Email Notification to Admins (Non-blocking)
         try {
-            const admins = await db.prepare("SELECT email FROM public.users WHERE role_id = 1 AND is_active = TRUE").all();
+            const admins = await db.prepare("SELECT email FROM public.users WHERE role_id = 1 AND is_active = TRUE").all() as any[];
             const roleNameMap: any = { "2": "Manager", "3": "Accounts", "4": "Salesperson" };
             const requestedRole = roleNameMap[role_id] || "User";
 
-            const { sendAdminSignupNotification } = require("@/lib/email");
-            for (const admin of admins as any[]) {
-                await sendAdminSignupNotification(admin.email, full_name, email, requestedRole);
+            for (const admin of admins) {
+                if (admin.email) {
+                    await sendAdminSignupNotification(admin.email, full_name, email, requestedRole);
+                }
             }
-        } catch (e) { console.warn("Admin signup notification deferred", e); }
+        } catch (e) {
+            console.warn("Admin signup notification deferred:", e);
+        }
 
         return NextResponse.json({
             message: "Registration successful. Your account is now in the queue for Admin approval.",

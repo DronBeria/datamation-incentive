@@ -20,27 +20,24 @@ export async function GET() {
             DECLARE
                 result jsonb;
                 cleaned_query text;
-                is_select_type boolean;
             BEGIN
                 cleaned_query := trim(sql_query);
                 
-                -- Check if it returns rows: SELECT, WITH, or commands with RETURNING
-                is_select_type := (cleaned_query ~* '^\\s*SELECT') OR 
-                                 (cleaned_query ~* '^\\s*WITH') OR 
-                                 (cleaned_query ~* '(?i)RETURNING');
-                
-                IF is_select_type THEN
-                    EXECUTE 'WITH result_set AS (' || trim(trailing ';' from cleaned_query) || ') SELECT jsonb_agg(t) FROM result_set t' INTO result;
-                ELSE
+                BEGIN
+                    -- Attempt to fetch as rows first
+                    EXECUTE 'SELECT jsonb_agg(t) FROM (' || trim(trailing ';' from cleaned_query) || ') t' INTO result;
+                EXCEPTION WHEN OTHERS THEN
+                    -- Fallback for DDL/DML without results
                     EXECUTE cleaned_query;
                     result := '[]'::jsonb;
-                END IF;
+                END;
                 
                 RETURN COALESCE(result, '[]'::jsonb);
             END;
             $$;
         `).run();
 
+        // Roles and User reset logic continues...
         // Ensure roles exist (use OVERRIDING SYSTEM VALUE for GENERATED ALWAYS AS IDENTITY)
         await db.prepare(
             "INSERT INTO public.roles (id, name) OVERRIDING SYSTEM VALUE VALUES (1, 'admin'), (2, 'manager'), (3, 'accounts'), (4, 'salesperson') ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name"

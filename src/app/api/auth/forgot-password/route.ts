@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { sendPasswordResetEmail } from "@/lib/email";
 import crypto from "crypto";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +30,6 @@ export async function POST(req: NextRequest) {
 
         // Industrial Email Notification (Non-blocking)
         try {
-            const { sendPasswordResetEmail } = require("@/lib/email");
             await sendPasswordResetEmail(email, user.full_name || "User", token);
         } catch (e) {
             console.error("Password reset email failed", e);

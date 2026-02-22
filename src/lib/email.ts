@@ -4,14 +4,22 @@ import nodemailer from 'nodemailer';
  * 🏭 INDUSTRIAL SMTP TRANSPORTER
  * Configured for high-reliability enterprise email flows.
  */
+const host = (process.env.SMTP_HOST || 'smtp.gmail.com').trim();
+const port = parseInt((process.env.SMTP_PORT || '465').trim());
+const user = (process.env.SMTP_USER || '').trim();
+const pass = (process.env.SMTP_PASS || '').trim();
+
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.SMTP_PORT || '465'),
-  secure: process.env.SMTP_PORT === '465', // true for 465, false for other ports
+  host,
+  port,
+  secure: port === 465, // true for 465, false for 587
   auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
+    user,
+    pass,
   },
+  // Industrial Timeout Settings
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
 });
 
 // INDUSTRIAL THEME COLORS
@@ -60,7 +68,7 @@ const BASE_TEMPLATE = (content: string) => `
 /**
  * Global Email Wrapper for SMTP Reliability
  */
-async function sendMail({ to, subject, html }: { to: string, subject: string, html: string }) {
+export async function sendMail({ to, subject, html }: { to: string, subject: string, html: string }) {
   try {
     const info = await transporter.sendMail({
       from: process.env.SMTP_FROM || `"PayoutPower" <notifications@datamation.com>`,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
+import { sendUserStatusUpdate } from "@/lib/email";
 import bcrypt from "bcryptjs";
 
 export const dynamic = "force-dynamic";
@@ -144,9 +145,10 @@ export async function PUT(req: Request) {
   // 4. Send Notification if approval status changed
   if (body.approval_status && body.approval_status !== "pending") {
     try {
-      const { sendUserStatusUpdate } = require("@/lib/email");
       await sendUserStatusUpdate(email, full_name, body.approval_status);
-    } catch (e) { console.warn("User status email deferred", e); }
+    } catch (e) {
+      console.warn("User status email deferred:", e);
+    }
   }
 
   return NextResponse.json({ message: "Profile updated successfully" });
