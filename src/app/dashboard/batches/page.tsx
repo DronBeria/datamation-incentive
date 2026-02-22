@@ -352,9 +352,11 @@ function BatchesContent() {
           <Button onClick={() => downloadCSV(filtered, "batches", BATCH_CSV_COLUMNS)} variant="outline" className="h-10 rounded-xl border-slate-200 bg-white text-xs font-semibold shadow-sm hover:bg-slate-50">
             <Download className="h-3.5 w-3.5 mr-2" /> Export
           </Button>
-          <Button onClick={() => setShowCreate(true)} className="bg-blue-600 hover:bg-blue-500 text-white font-semibold h-10 px-5 rounded-xl shadow-sm text-xs transition-all active:scale-95 flex items-center gap-2">
-            <Plus className="h-4 w-4" /> Create Batch
-          </Button>
+          {(user?.role === "admin" || user?.role === "manager") && (
+            <Button onClick={() => setShowCreate(true)} className="bg-blue-600 hover:bg-blue-500 text-white font-semibold h-10 px-5 rounded-xl shadow-sm text-xs transition-all active:scale-95 flex items-center gap-2">
+              <Plus className="h-4 w-4" /> Create Batch
+            </Button>
+          )}
         </div>
       </div>
 

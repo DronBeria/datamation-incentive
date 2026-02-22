@@ -137,25 +137,41 @@ export default function UsersPage() {
   };
 
   const handleApproval = async (id: string, action: 'approved' | 'rejected') => {
-    const user = users.find(u => u.id === id);
-    if (!user) return;
+    const u = users.find(user => user.id === id);
+    if (!u) return;
+
+    // Quick validation before API call
+    if (action === 'approved' && u.role === 'salesperson' && !u.scheme_name) {
+      toast.error("Salesperson must have a scheme assigned. Please use 'Edit Profile' to approve.", {
+        duration: 5000,
+        action: {
+          label: "Edit",
+          onClick: () => openEdit(u)
+        }
+      });
+      return;
+    }
+
     try {
       const res = await fetch("/api/users", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...user,
-          role_id: ROLE_IDS[user.role] || "4",
+          ...u,
+          role_id: ROLE_IDS[u.role] || "4",
           approval_status: action,
           is_active: action === 'approved'
         }),
       });
+      const data = await res.json();
       if (res.ok) {
         toast.success(action === 'approved' ? "User approved and activated" : "User request rejected");
         fetchUsers();
+      } else {
+        toast.error(data.error || "Account state modification failed");
       }
     } catch (err: any) {
-      toast.error("Account state modification failed");
+      toast.error("Network error: Profile update failed");
     }
   };
 
@@ -607,13 +623,44 @@ export default function UsersPage() {
                   </div>
                 </div>
 
+                {/* Row 4: Approval Status (Industrial Control) */}
+                <div className="grid grid-cols-2 gap-5">
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-slate-700">Approval Workflow</label>
+                    <Select value={form.approval_status} onValueChange={v => setForm({ ...form, approval_status: v })}>
+                      <SelectTrigger className="h-11 border-slate-200 bg-white rounded-lg text-sm font-medium">
+                        <SelectValue placeholder="Approval Status" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border-slate-200 shadow-xl bg-white p-1">
+                        <SelectItem value="pending" className="text-sm">Pending Review</SelectItem>
+                        <SelectItem value="approved" className="text-sm text-emerald-600 font-semibold">Approved (Active)</SelectItem>
+                        <SelectItem value="rejected" className="text-sm text-rose-600 font-semibold">Rejected (Invalid)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-end pb-1">
+                    <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100 flex-1">
+                      <Clock className="h-4 w-4 text-slate-400 mt-0.5" />
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Status Policy</p>
+                        <p className="text-[11px] text-slate-500 font-medium leading-tight">Approved users gain immediate system access.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Performance & Hierarchy Mapping (Salesperson only) */}
                 {form.role_id === "4" && (
                   <div className="p-5 rounded-xl bg-blue-50/50 border border-blue-100/50 space-y-4">
-                    <p className="text-sm font-semibold text-blue-900">Alignment & Hierarchy</p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold text-blue-900">Alignment & Hierarchy</p>
+                      {form.approval_status === "approved" && (
+                        <Badge variant="outline" className="bg-blue-100 text-blue-700 border-none text-[9px] font-black uppercase tracking-tighter">Scheme Required</Badge>
+                      )}
+                    </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <label className="text-xs font-semibold text-slate-600">Active Scheme</label>
+                        <label className="text-xs font-semibold text-slate-600">Active Scheme <span className="text-blue-600">*</span></label>
                         <Select value={form.scheme_id || undefined} onValueChange={v => setForm({ ...form, scheme_id: v })}>
                           <SelectTrigger className="h-10 bg-white border-slate-200 rounded-lg text-sm">
                             <SelectValue placeholder="Select scheme" />

@@ -129,8 +129,13 @@ export default function SalesPage() {
         setShowCreate(false);
         setForm({ salesperson_id: "", client_name: "", deal_value: "", product: "", sale_date: "", notes: "", quantity: "1", is_custom: false, custom_commission: "", scheme_id: "" });
         fetchLogs();
+      } else {
+        const errorData = await res.json();
+        toast.error(errorData.error || "Submission rejected by server");
       }
-    } catch { toast.error("Submission failed"); }
+    } catch (err: any) {
+      toast.error("Network synchronization failed");
+    }
     finally { setCreating(false); }
   };
 
@@ -527,8 +532,8 @@ export default function SalesPage() {
                         type="button"
                         onClick={() => setForm({ ...form, is_custom: !form.is_custom })}
                         className={`h-8 px-4 rounded-lg text-xs font-semibold transition-all border ${form.is_custom
-                            ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                            : "bg-white text-slate-500 border-slate-200 hover:border-blue-300"
+                          ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                          : "bg-white text-slate-500 border-slate-200 hover:border-blue-300"
                           }`}
                       >
                         {form.is_custom ? "Manual Amount" : "Auto Calculate"}

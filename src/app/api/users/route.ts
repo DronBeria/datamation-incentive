@@ -131,6 +131,22 @@ export async function PUT(req: Request) {
 
   const status = approval_status || 'approved';
 
+  // NEW: Mandatory Scheme Check for Salesperson Approval
+  if (status === 'approved' && parseInt(role_id) === 4) {
+    const activeAssignment = await db.prepare(
+      "SELECT id FROM public.user_scheme_assignments WHERE user_id = ? AND end_date IS NULL"
+    ).get(id);
+
+    // Check if a scheme is either already assigned OR being assigned in this request
+    const beingAssigned = body.scheme_id && body.scheme_id !== 'none';
+
+    if (!activeAssignment && !beingAssigned) {
+      return NextResponse.json({
+        error: "Validation Failed: Salesperson must be assigned to an incentive scheme before approval."
+      }, { status: 400 });
+    }
+  }
+
   let sql = "UPDATE public.users SET email = ?, full_name = ?, role_id = ?, department = ?, is_active = ?, manager_id = ?, approval_status = ? WHERE id = ?";
   let params = [email, full_name, role_id, department, is_active, managerId, status, id];
 
