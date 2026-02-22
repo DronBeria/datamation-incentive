@@ -65,8 +65,7 @@ export async function POST(req: Request) {
   }
 
   const hash = bcrypt.hashSync(password, 10);
-  let managerId = session.role === "manager" ? session.id : (body.manager_id || null);
-  if (managerId === "none") managerId = null;
+  let managerId = (body.manager_id === "none" || !body.manager_id) ? (session.role === "manager" ? session.id : null) : body.manager_id;
 
   const result = await db.prepare(
     "INSERT INTO public.users (email, password_hash, full_name, role_id, department, manager_id) VALUES (?, ?, ?, ?, ?, ?) RETURNING id"
@@ -76,9 +75,9 @@ export async function POST(req: Request) {
 
   // If a scheme was selected, assign it
   const { scheme_id } = body;
-  if (scheme_id && parseInt(role_id) === 4) {
+  if (scheme_id && scheme_id !== 'none' && parseInt(role_id) === 4) {
     await db.prepare(
-      "INSERT INTO public.user_scheme_assignments (user_id, scheme_id) VALUES (?, ?)"
+      "INSERT INTO public.user_scheme_assignments (user_id, scheme_id, start_date) VALUES (?, ?, CURRENT_DATE)"
     ).run(userId, scheme_id);
   }
 
@@ -96,29 +95,38 @@ export async function PUT(req: Request) {
   }
 
   const body = await req.json();
-  const { id, email, password, full_name, role_id, department, is_active } = body;
+  const { id, email, password, full_name, role_id, department, is_active, approval_status } = body;
 
   if (!id) return NextResponse.json({ error: "User ID required" }, { status: 400 });
+
+  // 0. Check for email conflict
+  const conflict = await db.prepare("SELECT id FROM public.users WHERE email = ? AND id != ?").get(email, id);
+  if (conflict) {
+    return NextResponse.json({ error: "Email already taken by another account" }, { status: 409 });
+  }
 
   // Security Check: If manager, verify they manage this user
   if (session.role === "manager") {
     const userToEdit = await db.prepare("SELECT manager_id FROM public.users WHERE id = ?").get(id) as any;
-    if (!userToEdit || userToEdit.manager_id !== session.id) {
+    if (!userToEdit || (userToEdit.manager_id !== session.id && id !== session.id)) {
       return NextResponse.json({ error: "Unauthorized: You can only edit your own team members" }, { status: 403 });
     }
-    if (parseInt(role_id) !== 4) {
+    // Managers cannot change roles of others (except for creating salespeople)
+    if (id !== session.id && parseInt(role_id) !== 4) {
       return NextResponse.json({ error: "Managers can only manage Salespeople" }, { status: 403 });
     }
   }
 
   // 1. Update basic info
-  let sql = "UPDATE public.users SET email = ?, full_name = ?, role_id = ?, department = ?, is_active = ?, manager_id = ?, approval_status = ? WHERE id = ?";
-  let params = [email, full_name, role_id, department, is_active, body.manager_id || null, body.approval_status || 'approved', id];
-
-  // If session is manager, override manager_id back to self unless they are editing themselves (unlikely here)
-  if (session.role === "manager") {
-    params[5] = session.id;
+  let managerId = (body.manager_id === "none" || !body.manager_id) ? null : body.manager_id;
+  if (session.role === "manager" && id !== session.id) {
+    managerId = session.id;
   }
+
+  const status = approval_status || 'approved';
+
+  let sql = "UPDATE public.users SET email = ?, full_name = ?, role_id = ?, department = ?, is_active = ?, manager_id = ?, approval_status = ? WHERE id = ?";
+  let params = [email, full_name, role_id, department, is_active, managerId, status, id];
 
   await db.prepare(sql).run(...params);
 
@@ -131,21 +139,24 @@ export async function PUT(req: Request) {
   // 3. Scheme Update for Salespeople
   const { scheme_id } = body;
   if (parseInt(role_id) === 4) {
-    // End current assignment
-    await db.prepare("UPDATE public.user_scheme_assignments SET end_date = CURRENT_DATE WHERE user_id = ? AND end_date IS NULL").run(id);
-    if (scheme_id) {
-      await db.prepare("INSERT INTO public.user_scheme_assignments (user_id, scheme_id) VALUES (?, ?)").run(id, scheme_id);
+    // Only update if scheme_id is explicitly passed in the update
+    if (body.hasOwnProperty('scheme_id')) {
+      // End current assignment
+      await db.prepare("UPDATE public.user_scheme_assignments SET end_date = CURRENT_DATE WHERE user_id = ? AND end_date IS NULL").run(id);
+      if (scheme_id && scheme_id !== 'none') {
+        await db.prepare("INSERT INTO public.user_scheme_assignments (user_id, scheme_id, start_date) VALUES (?, ?, CURRENT_DATE)").run(id, scheme_id);
+      }
     }
   }
 
   await db.prepare(
     "INSERT INTO public.audit_logs (user_id, action, entity_type, entity_id, new_value) VALUES (?, 'UPDATE', 'user', ?, ?)"
-  ).run(session.id, id, JSON.stringify({ email, role_id, is_active }));
+  ).run(session.id, id, JSON.stringify({ email, role_id, is_active, status }));
 
   // 4. Send Notification if approval status changed
-  if (body.approval_status && body.approval_status !== "pending") {
+  if (approval_status && approval_status !== "pending") {
     try {
-      await sendUserStatusUpdate(email, full_name, body.approval_status);
+      await sendUserStatusUpdate(email, full_name, approval_status);
     } catch (e) {
       console.warn("User status email deferred:", e);
     }
@@ -162,7 +173,6 @@ export async function DELETE(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
-  const role = searchParams.get("role");
 
   if (!id) return NextResponse.json({ error: "User ID required" }, { status: 400 });
 

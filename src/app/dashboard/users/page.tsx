@@ -69,6 +69,7 @@ export default function UsersPage() {
   const [form, setForm] = useState({
     id: "", email: "", password: "", full_name: "", role_id: "4",
     department: "", scheme_id: "", manager_id: "", is_active: true,
+    approval_status: "approved"
   });
 
   const fetchUsers = () => {
@@ -88,7 +89,7 @@ export default function UsersPage() {
 
   const openCreate = () => {
     setModalMode("create");
-    setForm({ id: "", email: "", password: "", full_name: "", role_id: "4", department: "", scheme_id: "", manager_id: "", is_active: true });
+    setForm({ id: "", email: "", password: "", full_name: "", role_id: "4", department: "", scheme_id: "", manager_id: "", is_active: true, approval_status: "approved" });
     setShowModal(true);
   };
 
@@ -99,8 +100,9 @@ export default function UsersPage() {
       role_id: ROLE_IDS[u.role] || "4",
       department: u.department || "",
       scheme_id: schemes.find(s => s.name === u.scheme_name)?.id?.toString() || "",
-      manager_id: u.manager_id?.toString() || "",
+      manager_id: u.manager_id?.toString() || "none",
       is_active: !!u.is_active,
+      approval_status: u.approval_status || "approved"
     });
     setShowModal(true);
   };
@@ -116,9 +118,10 @@ export default function UsersPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          id: form.id ? parseInt(form.id.toString()) : null,
           role_id: parseInt(form.role_id),
-          scheme_id: form.scheme_id ? parseInt(form.scheme_id) : null,
-          manager_id: form.manager_id ? parseInt(form.manager_id) : null
+          scheme_id: (form.scheme_id && form.scheme_id !== 'none') ? parseInt(form.scheme_id) : null,
+          manager_id: (form.manager_id && form.manager_id !== 'none') ? parseInt(form.manager_id) : null
         }),
       });
       if (res.ok) {
@@ -150,10 +153,26 @@ export default function UsersPage() {
     } catch { toast.error("Operation failed"); }
   };
 
-  const handleDelete = async (id: string, role: string) => {
+  const handleToggleStatus = async (user: any) => {
     try {
-      const res = await fetch(`/api/users?id=${id}&role=${role}`, { method: "DELETE" });
-      if (res.ok) { toast.success("Access status toggled"); fetchUsers(); }
+      if (user.is_active) {
+        // Deactivate/Purge logic
+        const res = await fetch(`/api/users?id=${user.id}&role=${user.role}`, { method: "DELETE" });
+        if (res.ok) { toast.success("Access status updated"); fetchUsers(); }
+      } else {
+        // Re-activate logic
+        const res = await fetch("/api/users", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...user,
+            role_id: ROLE_IDS[user.role] || "4",
+            is_active: true,
+            approval_status: 'approved'
+          }),
+        });
+        if (res.ok) { toast.success("Account re-activated"); fetchUsers(); }
+      }
     } catch { toast.error("Operation failed"); }
   };
 
@@ -385,7 +404,7 @@ export default function UsersPage() {
                               <DropdownMenuItem onClick={() => openEdit(u)} className="h-10 rounded-lg text-xs font-medium text-slate-600 flex items-center gap-2 cursor-pointer focus:bg-slate-50 transition-all">
                                 <Edit2 className="h-3.5 w-3.5" /> Edit Profile
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleDelete(u.id, u.role)} className={`h-10 rounded-lg text-xs font-medium flex items-center gap-2 cursor-pointer focus:bg-slate-50 transition-all ${u.is_active ? "text-rose-600" : "text-emerald-600"}`}>
+                              <DropdownMenuItem onClick={() => handleToggleStatus(u)} className={`h-10 rounded-lg text-xs font-medium flex items-center gap-2 cursor-pointer focus:bg-slate-50 transition-all ${u.is_active ? "text-rose-600" : "text-emerald-600"}`}>
                                 {u.is_active ? (
                                   <><UserX className="h-3.5 w-3.5" /> Disable User</>
                                 ) : (
@@ -512,6 +531,7 @@ export default function UsersPage() {
                             <SelectValue placeholder="Select scheme" />
                           </SelectTrigger>
                           <SelectContent className="rounded-xl border-slate-200 shadow-xl bg-white p-1">
+                            <SelectItem value="none" className="text-xs text-slate-400 italic">No Incentive Scheme</SelectItem>
                             {schemes.map(s => (
                               <SelectItem key={s.id} value={String(s.id)} className="text-sm">
                                 {s.name} — ({(s.base_rate * 100).toFixed(1)}%)
