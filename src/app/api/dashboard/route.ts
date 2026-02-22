@@ -9,7 +9,7 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   if (session.role === "admin") {
-    const [totalUsers, activeUsers, totalSales, totalCommissions, pendingBatches, totalAccrued, activeSchemes, globalPendingLogs] = await Promise.all([
+    const [totalUsers, activeUsers, totalSales, totalCommissions, pendingBatches, totalAccrued, activeSchemes, globalPendingLogs, pendingUsersCount] = await Promise.all([
       db.prepare("SELECT COUNT(*) as c FROM public.users").get(),
       db.prepare("SELECT COUNT(*) as c FROM public.users WHERE is_active=TRUE").get(),
       db.prepare("SELECT COALESCE(SUM(deal_value),0) as s FROM public.sales_logs").get(),
@@ -17,7 +17,8 @@ export async function GET() {
       db.prepare("SELECT COUNT(*) as c FROM public.incentive_batches WHERE status='pending_approval'").get(),
       db.prepare("SELECT COALESCE(SUM(calculated_commission + override_commission),0) as s FROM public.sales_logs WHERE status='accrued'").get(),
       db.prepare("SELECT COUNT(*) as c FROM public.incentive_schemes").get(),
-      db.prepare("SELECT COUNT(*) as c FROM public.sales_logs WHERE status='pending_review'").get()
+      db.prepare("SELECT COUNT(*) as c FROM public.sales_logs WHERE status='pending_review'").get(),
+      db.prepare("SELECT COUNT(*) as c FROM public.users WHERE approval_status='pending'").get()
     ]);
 
     const recentAudit = await db.prepare(`
@@ -35,6 +36,7 @@ export async function GET() {
       totalAccrued: (totalAccrued as any)?.s || 0,
       activeSchemes: (activeSchemes as any)?.c || 0,
       globalPendingLogs: (globalPendingLogs as any)?.c || 0,
+      pendingUsers: (pendingUsersCount as any)?.c || 0,
       recentAudit: Array.isArray(recentAudit) ? recentAudit : [],
     };
     return NextResponse.json(stats);

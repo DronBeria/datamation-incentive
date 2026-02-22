@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { sendPasswordResetEmail } from "@/lib/email";
+import bcrypt from "bcryptjs";
 import crypto from "crypto";
 
 export const dynamic = "force-dynamic";
@@ -57,15 +58,15 @@ export async function PUT(req: NextRequest) {
             return NextResponse.json({ error: "Invalid request parameters." }, { status: 400 });
         }
 
+        // Industrial check: Ensure we compare with NOW() on DB side for absolute precision
         const user = await db.prepare(
-            "SELECT id FROM public.users WHERE reset_token = ? AND reset_token_expiry > ?"
-        ).get(token, new Date().toISOString()) as any;
+            "SELECT id FROM public.users WHERE reset_token = ? AND reset_token_expiry > NOW()"
+        ).get(token) as any;
 
         if (!user) {
             return NextResponse.json({ error: "Invalid or expired recovery link." }, { status: 400 });
         }
 
-        const bcrypt = require("bcryptjs");
         const hash = bcrypt.hashSync(newPassword, 10);
 
         await db.prepare(

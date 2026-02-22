@@ -3,6 +3,7 @@
 import { useAuth } from "@/lib/auth-context";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -128,6 +129,30 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 pb-10">
+      {/* High Visibility Alerts */}
+      {user.role === 'admin' && stats.pendingUsers > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative overflow-hidden bg-white border-l-4 border-l-rose-500 border border-slate-100 shadow-sm rounded-2xl p-4 flex items-center justify-between group"
+        >
+          <div className="flex items-center gap-4">
+            <div className="h-10 w-10 rounded-xl bg-rose-50 flex items-center justify-center shrink-0 border border-rose-100 group-hover:scale-110 transition-transform">
+              <Users className="h-5 w-5 text-rose-500" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-900 tracking-tight">Action Required: {stats.pendingUsers} Registration{stats.pendingUsers > 1 ? 's' : ''} Pending</p>
+              <p className="text-[11px] font-medium text-slate-400 mt-0.5 uppercase tracking-wider">New staff members are awaiting system authorization & role assignment.</p>
+            </div>
+          </div>
+          <Link href="/dashboard/users?tab=approvals">
+            <Button size="sm" className="bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs h-9 px-4 shadow-sm active:scale-95 transition-all">
+              Manage Queue <ArrowRight className="ml-2 h-3.5 w-3.5" />
+            </Button>
+          </Link>
+        </motion.div>
+      )}
+
       {/* Welcome Banner */}
       <div className="relative overflow-hidden bg-white border border-slate-100 shadow-sm rounded-2xl p-8">
         <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-blue-50/50 blur-[100px] rounded-full -mr-32 -mt-32" />

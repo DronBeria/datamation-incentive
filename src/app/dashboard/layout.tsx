@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
   FileText,
@@ -124,9 +125,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           )}
           {(!collapsed || isMobile) && (
-            <button onClick={handleLogout} className="text-slate-400 hover:text-rose-500 transition-colors tooltip">
-              <LogOut className="h-3.5 w-3.5" />
-            </button>
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={handleLogout}
+              className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all duration-200 shadow-sm hover:shadow-inner group"
+              title="Secure Logout"
+            >
+              <LogOut className="h-3.5 w-3.5 group-hover:animate-pulse" />
+            </motion.button>
           )}
         </div>
       </div>

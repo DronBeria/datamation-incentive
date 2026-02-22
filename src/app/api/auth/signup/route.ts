@@ -43,19 +43,26 @@ export async function POST(req: NextRequest) {
             "INSERT INTO public.audit_logs (action, entity_type, entity_id, new_value) VALUES ('SIGNUP_REQUEST', 'user', ?, ?)"
         ).run(userId, JSON.stringify({ email, full_name, role_id }));
 
-        // Industrial Email Notification to Admins (Non-blocking)
+        // Industrial Notification System (In-Dashboard + Email)
         try {
-            const admins = await db.prepare("SELECT email FROM public.users WHERE role_id = 1 AND is_active = TRUE").all() as any[];
+            const admins = await db.prepare("SELECT id, email FROM public.users WHERE role_id = 1 AND is_active = TRUE").all() as any[];
             const roleNameMap: any = { "2": "Manager", "3": "Accounts", "4": "Salesperson" };
             const requestedRole = roleNameMap[role_id] || "User";
 
             for (const admin of admins) {
+                // 1. Persistent Dashboard Notification
+                await db.prepare(`
+                    INSERT INTO public.notifications (user_id, title, message, type)
+                    VALUES (?, 'New Access Request', ?, 'action_required')
+                `).run(admin.id, `Staff member ${full_name} (${email}) has requested ${requestedRole} access.`);
+
+                // 2. Automated Email Alert
                 if (admin.email) {
                     await sendAdminSignupNotification(admin.email, full_name, email, requestedRole);
                 }
             }
         } catch (e) {
-            console.warn("Admin signup notification deferred:", e);
+            console.warn("Unified notification dispatch deferred:", e);
         }
 
         return NextResponse.json({
