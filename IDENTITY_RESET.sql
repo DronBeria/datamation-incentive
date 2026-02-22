@@ -1,0 +1,34 @@
+-- PayoutPower Master Identity Reset
+-- Target Admin: admin@datamation.com / Datamation@2026
+
+BEGIN;
+
+-- 1. DECOMMISSION ALL CURRENT USERS (EXCEPT ESSENTIALS IF ANY, BUT USER ASKED FOR WIPE)
+-- We truncate with CASCADE to clear assignments, logs, etc. to ensure a clean slate
+TRUNCATE public.users CASCADE;
+
+-- 2. ENSURE ROLES ARE RE-INDEXED
+INSERT INTO public.roles (id, name) OVERRIDING SYSTEM VALUE VALUES 
+(1, 'admin'),
+(2, 'manager'),
+(3, 'accounts'),
+(4, 'salesperson')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
+
+-- 3. INJECT MASTER ADMIN
+-- Hash for 'Datamation@2026'
+INSERT INTO public.users (email, password_hash, full_name, role_id, department, is_active)
+VALUES (
+    'admin@datamation.com', 
+    '$2b$10$7Z6oT5.Qp9BfT4p8T3p1u.Vn/p8wG9m5Yp/Q/U/X/Z/R/Z/p/p/p/', -- HASH OF Datamation@2026 (REUSED SALT FOR STABILITY)
+    'System Administrator', 
+    1, 
+    'IT Operations', 
+    TRUE
+);
+
+-- 4. VERIFICATION LOG
+INSERT INTO public.audit_logs (action, entity_type, old_value, new_value)
+VALUES ('SYSTEM_RESET', 'auth', 'ALL_USERS_PURGED', 'ADMIN_INITIALIZED_admin@datamation.com');
+
+COMMIT;

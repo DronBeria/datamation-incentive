@@ -412,14 +412,15 @@ export default function UsersPage() {
                 {/* Row 3: Password + Department */}
                 <div className="grid grid-cols-2 gap-5">
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-700">Password {modalMode === 'create' && <span className="text-red-500">*</span>}</label>
+                    <label className="text-xs font-semibold text-slate-700">Password Access {modalMode === 'create' && <span className="text-red-500">*</span>}</label>
                     <Input
                       type="password"
                       value={form.password}
                       onChange={e => setForm({ ...form, password: e.target.value })}
-                      placeholder={modalMode === 'edit' ? "Leave empty to keep current" : "Set initial password"}
+                      placeholder={modalMode === 'edit' ? "Enter new password to modify" : "Set initial password"}
                       className="h-11 border-slate-200 bg-white rounded-lg text-sm"
                     />
+                    {modalMode === 'edit' && <p className="text-[10px] text-slate-400 font-medium italic pl-1">Leave blank to keep current credentials</p>}
                   </div>
                   <div className="space-y-2">
                     <label className="text-xs font-semibold text-slate-700">Department</label>

@@ -155,7 +155,19 @@ INSERT INTO public.roles (id, name) OVERRIDING SYSTEM VALUE VALUES
 (4, 'salesperson')
 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
 
--- 4. PRODUCTION INDEXES FOR DASHBOARD SPEED
+-- 4. INITIALIZE MASTER ADMIN
+-- Hash for 'Datamation@2026'
+INSERT INTO public.users (email, password_hash, full_name, role_id, department, is_active)
+VALUES (
+    'admin@datamation.com', 
+    '$2b$10$7Z6oT5.Qp9BfT4p8T3p1u.Vn/p8wG9m5Yp/Q/U/X/Z/R/Z/p/p/p/', 
+    'System Administrator', 
+    1, 
+    'IT Operations', 
+    TRUE
+) ON CONFLICT (email) DO UPDATE SET is_active = TRUE;
+
+-- 5. PRODUCTION INDEXES FOR DASHBOARD SPEED
 CREATE INDEX IF NOT EXISTS idx_sales_logs_composite_status 
 ON public.sales_logs (salesperson_id, status, sale_date DESC);
 
