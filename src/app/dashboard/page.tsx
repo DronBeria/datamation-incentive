@@ -179,7 +179,7 @@ export default function DashboardPage() {
         <KpiCard icon={TrendingUp} label="Total Revenue" value={`₹${fmt(stats.totalSales)}`} trend="+14.2%" colorClass="text-blue-600" />
         <KpiCard icon={ShieldCheck} label="Pending Review" value={stats.pendingBatches} sub="Review required" colorClass="text-indigo-600" />
         <KpiCard icon={DollarSign} label="Payouts" value={`₹${fmt(stats.totalCommissions)}`} sub="Settled total" trend="+8.4%" colorClass="text-emerald-600" />
-        <KpiCard icon={Users} label="Team Members" value={stats.totalUsers} sub="Total personnel" trend="+3.2%" colorClass="text-slate-600" />
+        <KpiCard icon={Users} label="Team Members" value={stats.activeUsers || 0} sub={`${stats.totalUsers || 0} Total Staff Headcount`} trend="+3.2%" colorClass="text-slate-600" />
       </div>
 
       {/* Chart & Activity */}

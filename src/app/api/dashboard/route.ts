@@ -9,7 +9,8 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   if (session.role === "admin") {
-    const [totalUsers, totalSales, totalCommissions, pendingBatches, totalAccrued, activeSchemes, globalPendingLogs] = await Promise.all([
+    const [totalUsers, activeUsers, totalSales, totalCommissions, pendingBatches, totalAccrued, activeSchemes, globalPendingLogs] = await Promise.all([
+      db.prepare("SELECT COUNT(*) as c FROM public.users").get(),
       db.prepare("SELECT COUNT(*) as c FROM public.users WHERE is_active=TRUE").get(),
       db.prepare("SELECT COALESCE(SUM(deal_value),0) as s FROM public.sales_logs").get(),
       db.prepare("SELECT COALESCE(SUM(calculated_commission),0) as s FROM public.sales_logs").get(),
@@ -27,6 +28,7 @@ export async function GET() {
 
     const stats = {
       totalUsers: (totalUsers as any)?.c || 0,
+      activeUsers: (activeUsers as any)?.c || 0,
       totalSales: (totalSales as any)?.s || 0,
       totalCommissions: (totalCommissions as any)?.s || 0,
       pendingBatches: (pendingBatches as any)?.c || 0,
@@ -39,7 +41,8 @@ export async function GET() {
   }
 
   if (session.role === "manager") {
-    const [teamMembers, teamSales, totalOverrides, pendingBatches, pendingReviewLogs, activeSchemes] = await Promise.all([
+    const [totalMembers, activeMembers, teamSales, totalOverrides, pendingBatches, pendingReviewLogs, activeSchemes] = await Promise.all([
+      db.prepare("SELECT COUNT(*) as c FROM public.users WHERE manager_id=?").get(session.id),
       db.prepare("SELECT COUNT(*) as c FROM public.users WHERE manager_id=? AND is_active=TRUE").get(session.id),
       db.prepare("SELECT COALESCE(SUM(deal_value),0) as s FROM public.sales_logs WHERE salesperson_id IN (SELECT id FROM public.users WHERE manager_id=? OR id=?)").get(session.id, session.id),
       db.prepare("SELECT COALESCE(SUM(override_commission),0) as s FROM public.sales_logs WHERE salesperson_id IN (SELECT id FROM public.users WHERE manager_id=?)").get(session.id),
@@ -56,8 +59,10 @@ export async function GET() {
     `).all(session.id, session.id);
 
     const stats = {
-      teamMembers: (teamMembers as any)?.c || 0,
-      totalUsers: (teamMembers as any)?.c || 0, // For KPI compatibility
+      teamMembers: (totalMembers as any)?.c || 0,
+      activeMembers: (activeMembers as any)?.c || 0,
+      totalUsers: (totalMembers as any)?.c || 0, // For KPI compatibility
+      activeUsers: (activeMembers as any)?.c || 0,
       totalSales: (teamSales as any)?.s || 0,
       totalCommissions: (totalOverrides as any)?.s || 0, // Manager's override view
       pendingBatches: (pendingBatches as any)?.c || 0,

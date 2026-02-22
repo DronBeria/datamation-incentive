@@ -157,12 +157,12 @@ export async function PUT(req: Request) {
 
   await db.prepare(
     "INSERT INTO public.audit_logs (user_id, action, entity_type, entity_id, new_value) VALUES (?, 'UPDATE', 'user', ?, ?)"
-  ).run(session.id, id, JSON.stringify({ email, role_id, is_active, status }));
+  ).run(session.id, id, JSON.stringify({ email, role_id, is_active, approval_status: status }));
 
   // 4. Send Notification if approval status changed
   if (approval_status && approval_status !== "pending") {
     try {
-      await sendUserStatusUpdate(email, full_name, approval_status);
+      await sendUserStatusUpdate(email, full_name, approval_status === 'approved' ? 'approved' : 'rejected');
     } catch (e) {
       console.warn("User status email deferred:", e);
     }
@@ -204,27 +204,32 @@ export async function DELETE(req: Request) {
     const hasHistory = !!(hasSales || hasAdjustments || hasBeenAudited);
 
     if (hasHistory && !purgeRequested) {
-      // Robust Soft-Delete (Industrial Standard)
-      await db.prepare("UPDATE public.users SET is_active = FALSE, approval_status = 'rejected' WHERE id = ?").run(id);
+      // 🏭 Industrial Soft-Delete / Suspension
+      // We keep the approval_status as it was (likely approved) but disable the login
+      await db.prepare("UPDATE public.users SET is_active = FALSE WHERE id = ?").run(id);
+
+      // Also close active assignments
+      await db.prepare("UPDATE public.user_scheme_assignments SET end_date = CURRENT_DATE WHERE user_id = ? AND end_date IS NULL").run(id);
+
       return NextResponse.json({
-        message: "User account deactivated (Historical audit records found)",
+        message: "User account suspended (Audit records preserved)",
         type: 'deactivated'
       });
     }
 
-    // 2. Safe Hard Delete if specifically requested or no history exists
+    // 2. Industrial Hard Purge (Only if no critical history or explicitly forced)
     await db.prepare("DELETE FROM public.user_scheme_assignments WHERE user_id = ?").run(id);
-    await db.prepare("DELETE FROM public.audit_logs WHERE entity_type = 'user' AND entity_id = ?").run(id);
+    await db.prepare("DELETE FROM public.audit_logs WHERE (user_id = ? OR (entity_type = 'user' AND entity_id = ?))").run(id, id);
     await db.prepare("DELETE FROM public.users WHERE id = ?").run(id);
 
     await db.prepare(
       "INSERT INTO public.audit_logs (user_id, action, entity_type, entity_id, new_value) VALUES (?, 'PURGE', 'user', ?, ?)"
-    ).run(session.id, id, JSON.stringify({ reason: "Manual deletion requested by admin" }));
+    ).run(session.id, id, JSON.stringify({ reason: "Complete identifying data wipe requested" }));
 
-    return NextResponse.json({ message: "User record identifying data purged successfully", type: 'purged' });
+    return NextResponse.json({ message: "User account and all related metadata purged", type: 'purged' });
   } catch (err: any) {
     console.error("[USER_DELETE_ERROR]", err.message);
     await db.prepare("UPDATE public.users SET is_active = FALSE WHERE id = ?").run(id);
-    return NextResponse.json({ message: "System failure during purge: User status locked to inactive", error: err.message }, { status: 500 });
+    return NextResponse.json({ message: "System restricted operation: User status locked to inactive", error: err.message }, { status: 500 });
   }
 }

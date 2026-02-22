@@ -207,15 +207,25 @@ export default function UsersPage() {
 
   const filtered = useMemo(() => {
     return users.filter(u => {
-      const isPending = u.approval_status === 'pending';
+      // 1. Tab Level Isolation
+      const isPending = u.approval_status === "pending";
       if (activeTab === "approvals") return isPending;
-      if (isPending) return false; // Hide pending users from main directory
+      if (isPending) return false; // Never show pending in main directory
 
-      const matchSearch = u.full_name.toLowerCase().includes(search.toLowerCase()) ||
+      // 2. Search Logic
+      const matchSearch =
+        u.full_name.toLowerCase().includes(search.toLowerCase()) ||
         u.email.toLowerCase().includes(search.toLowerCase()) ||
         (u.department || "").toLowerCase().includes(search.toLowerCase());
+
+      // 3. Role/Status Filters
       const matchRole = roleFilter === "all" || u.role === roleFilter;
-      const matchStatus = statusFilter === "all" || (statusFilter === "active" ? !!u.is_active : !u.is_active);
+
+      // Simplified status matching for Industrial Directory
+      let matchStatus = true;
+      if (statusFilter === "active") matchStatus = (u.is_active && u.approval_status === 'approved');
+      else if (statusFilter === "inactive") matchStatus = !u.is_active;
+
       return matchSearch && matchRole && matchStatus;
     });
   }, [users, search, roleFilter, statusFilter, activeTab]);
@@ -317,13 +327,13 @@ export default function UsersPage() {
                 </SelectContent>
               </Select>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="h-10 border-slate-100 bg-slate-50/50 rounded-xl text-xs font-semibold px-4 flex-1">
+                <SelectTrigger className="w-[140px] h-10 border-slate-200 bg-white rounded-xl text-xs font-bold text-slate-600 focus:ring-indigo-500 shadow-sm">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl border border-slate-100 shadow-lg p-1 bg-white">
-                  <SelectItem value="all" className="rounded-lg text-xs font-medium">All Status</SelectItem>
-                  <SelectItem value="active" className="rounded-lg text-xs font-medium text-emerald-600">Active</SelectItem>
-                  <SelectItem value="inactive" className="rounded-lg text-xs font-medium text-rose-600">Inactive</SelectItem>
+                <SelectContent className="rounded-xl border-slate-100 shadow-xl overflow-hidden">
+                  <SelectItem value="all" className="rounded-lg text-xs font-medium text-slate-600">All Statuses</SelectItem>
+                  <SelectItem value="active" className="rounded-lg text-xs font-medium text-emerald-600">Active Only</SelectItem>
+                  <SelectItem value="inactive" className="rounded-lg text-xs font-medium text-amber-600">Suspended</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -399,10 +409,26 @@ export default function UsersPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={`text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg border-none shadow-sm flex w-fit items-center gap-1.5 ${u.is_active ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"}`}>
-                          <div className={`h-1.5 w-1.5 rounded-full ${u.is_active ? "bg-emerald-500" : "bg-rose-500"}`} />
-                          {u.is_active ? "Active" : "Inactive"}
-                        </Badge>
+                        {(() => {
+                          if (u.approval_status === "rejected") return (
+                            <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg border-none bg-slate-900 text-white shadow-sm flex w-fit items-center gap-1.5">
+                              <div className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
+                              Banned
+                            </Badge>
+                          );
+                          if (!u.is_active) return (
+                            <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg border-none bg-amber-50 text-amber-600 shadow-sm flex w-fit items-center gap-1.5">
+                              <div className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                              Suspended
+                            </Badge>
+                          );
+                          return (
+                            <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg border-none bg-emerald-50 text-emerald-600 shadow-sm flex w-fit items-center gap-1.5">
+                              <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                              Verified
+                            </Badge>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col">
