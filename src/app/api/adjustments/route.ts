@@ -15,21 +15,27 @@ export async function GET(req: NextRequest) {
     let query = `
         SELECT a.*, u.full_name 
         FROM public.adjustments a 
-        JOIN public.users u ON a.user_id = u.id
+        JOIN public.users u ON a.salesperson_id = u.id
     `;
     const params: any[] = [];
 
     if (session.role === "salesperson") {
-        query += " WHERE a.user_id = ?";
+        query += " WHERE a.salesperson_id = ?";
         params.push(session.id);
     } else if (userId) {
-        query += " WHERE a.user_id = ?";
+        query += " WHERE a.salesperson_id = ?";
         params.push(userId);
     }
 
     query += " ORDER BY a.created_at DESC";
-    const rows = await db.prepare(query).all(...params);
-    return NextResponse.json(rows);
+
+    try {
+        const rows = await db.prepare(query).all(...params);
+        return NextResponse.json(rows);
+    } catch (err: any) {
+        console.error("[ADJUSTMENTS_GET_ERROR]", err.message);
+        return NextResponse.json({ error: err.message }, { status: 500 });
+    }
 }
 
 export async function POST(req: NextRequest) {
@@ -47,7 +53,7 @@ export async function POST(req: NextRequest) {
 
     try {
         const result = await db.prepare(`
-          INSERT INTO public.adjustments (user_id, amount, reason, type, status)
+          INSERT INTO public.adjustments (salesperson_id, amount, reason, type, status)
           VALUES (?, ?, ?, ?, 'pending')
           RETURNING id
         `).run(user_id, amount, reason, type);
@@ -56,18 +62,18 @@ export async function POST(req: NextRequest) {
             "INSERT INTO public.audit_logs (user_id, action, entity_type, entity_id, new_value) VALUES (?, 'CREATE', 'adjustment', ?, ?)"
         ).run(session.id, result.lastInsertRowid, JSON.stringify(body));
 
-        // Send Notification (Non-blocking)
+        // Email notification (non-blocking)
         try {
             const staff = await db.prepare("SELECT email, full_name FROM public.users WHERE id = ?").get(user_id) as any;
-            if (staff && staff.email) {
-                const displayAction = type === 'bonus' ? 'Performance Bonus Applied' : 'Manual Deduction/Adjustment';
-                await sendIncentiveUpdate(staff.email, staff.full_name, displayAction, amount);
+            if (staff?.email) {
+                const displayAction = type === 'bonus' ? 'A performance bonus has been applied to your account' : 'A manual adjustment has been applied to your account';
+                await sendIncentiveUpdate(staff.email, staff.full_name, displayAction, parseFloat(amount));
             }
         } catch (e) {
-            console.warn("Incentive update email deferred:", e);
+            console.warn("[ADJUSTMENTS] Email notification deferred:", e);
         }
 
-        return NextResponse.json({ id: result.lastInsertRowid, message: "Fiscal adjustment successfully indexed" });
+        return NextResponse.json({ id: result.lastInsertRowid, message: "Adjustment successfully recorded" });
     } catch (err: any) {
         console.error("[ADJUSTMENT_POST_ERROR]", err.message);
         return NextResponse.json({ error: err.message }, { status: 400 });

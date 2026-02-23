@@ -99,7 +99,8 @@ export async function middleware(request: NextRequest) {
     // ── Protected: /api/* (except auth endpoints) ──
     if (
         pathname.startsWith("/api/") &&
-        !pathname.startsWith("/api/auth/")
+        !pathname.startsWith("/api/auth/") &&
+        !pathname.startsWith("/api/debug/")
     ) {
         if (!token) {
             return applySecurityHeaders(

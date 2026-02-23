@@ -1,224 +1,246 @@
 import nodemailer from 'nodemailer';
 
-/**
- * 🏭 INDUSTRIAL SMTP TRANSPORTER
- * Configured for high-reliability enterprise email flows.
- */
-const host = (process.env.SMTP_HOST || "smtp.gmail.com").trim();
-const port = Number(process.env.SMTP_PORT) || 465;
-const user = (process.env.SMTP_USER || "").trim();
-const pass = (process.env.SMTP_PASS || "").replace(/\s/g, "").trim();
+declare global {
+  var _smtpTransporter: nodemailer.Transporter | undefined;
+}
 
-const transporter = nodemailer.createTransport({
-  host,
-  port,
-  secure: port === 465,
-  auth: { user, pass },
-  connectionTimeout: 15000,
-  greetingTimeout: 15000,
-});
+const SMTP_HOST = process.env.SMTP_HOST || 'smtp.gmail.com';
+const SMTP_PORT = parseInt(process.env.SMTP_PORT || '465', 10);
+const SMTP_USER = process.env.SMTP_USER || 'datamationincentive@gmail.com';
+// Strip surrounding quotes that .env readers sometimes include
+const SMTP_PASS = (process.env.SMTP_PASS || '').replace(/^["']|["']$/g, '').trim();
+const SMTP_FROM = process.env.SMTP_FROM || `"PayoutPower" <${SMTP_USER}>`;
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001';
 
-transporter.verify((error) => {
-  if (error) console.error("❌ SMTP Verification Error:", error.message);
-  else console.log("✅ SMTP Gateway Ready");
-});
+function getTransporter(): nodemailer.Transporter {
+  // Port 465 = SSL (secure: true). Port 587 = STARTTLS (secure: false).
+  const useSSL = SMTP_PORT === 465;
 
-// INDUSTRIAL THEME COLORS
-const COLORS = {
-  primary: '#4f46e5',   // Indigo 600
-  dark: '#0f172a',      // Slate 900
-  slate: '#64748b',     // Slate 500
-  border: '#e2e8f0',    // Slate 200
-  bg: '#f8fafc',        // Slate 50
-  emerald: '#10b981',   // Emerald 500
-  amber: '#f59e0b',     // Amber 500
-};
+  const config: nodemailer.TransportOptions = {
+    host: SMTP_HOST,
+    port: SMTP_PORT,
+    secure: useSSL,
+    auth: {
+      user: SMTP_USER,
+      pass: SMTP_PASS,
+    },
+    connectionTimeout: 30000,
+    greetingTimeout: 30000,
+  } as any;
 
-const BASE_TEMPLATE = (content: string) => `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 40px 20px; background-color: ${COLORS.bg}; color: ${COLORS.dark}; line-height: 1.6; margin: 0;">
-    <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 24px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); border: 1px solid ${COLORS.border};">
-        
-        <!-- Header -->
-        <div style="background: ${COLORS.dark}; padding: 32px; text-align: center;">
-            <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.025em;">PayoutPower</h1>
-            <p style="color: ${COLORS.slate}; margin: 4px 0 0; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em;">Industrial Incentive Suite</p>
-        </div>
+  if (process.env.NODE_ENV === 'production') {
+    return nodemailer.createTransport(config);
+  }
 
-        <div style="padding: 40px;">
-            ${content}
-        </div>
-
-        <!-- Footer -->
-        <div style="background: ${COLORS.bg}; padding: 32px; border-top: 1px solid ${COLORS.border}; text-align: center;">
-            <p style="margin: 0; font-size: 11px; font-weight: 700; color: ${COLORS.slate}; text-transform: uppercase; letter-spacing: 0.15em;">Automated Security Dispatch</p>
-            <p style="margin: 8px 0 0; font-size: 12px; color: ${COLORS.slate}; font-weight: 500;">Sent via <strong>Datamation Inc.</strong> Professional SMTP Node</p>
-            <div style="margin: 24px 0 0; padding-top: 24px; border-top: 1px solid ${COLORS.border};">
-                <p style="margin: 0; font-size: 10px; color: #cbd5e1;">&copy; 2026 Datamation Inc. All rights reserved. <br/> This communication is intended solely for the authenticated user and contains confidential personnel data.</p>
-            </div>
-        </div>
-    </div>
-</body>
-</html>
-`;
-
-/**
- * Global Email Wrapper for SMTP Reliability
- */
-export async function sendMail({ to, subject, html }: { to: string, subject: string, html: string }) {
-  try {
-    const info = await transporter.sendMail({
-      from: process.env.SMTP_FROM || '"PayoutPower" <datamationincentive@gmail.com>',
-      to,
-      subject,
-      html,
+  if (!global._smtpTransporter) {
+    console.log(`[SMTP] Initializing transporter ${SMTP_HOST}:${SMTP_PORT} SSL=${useSSL}`);
+    global._smtpTransporter = nodemailer.createTransport(config);
+    global._smtpTransporter.verify((err) => {
+      if (err) console.error('[SMTP] Verification failed:', err.message);
+      else console.log('[SMTP] Ready — transporter verified');
     });
+  }
+  return global._smtpTransporter;
+}
+
+const BRAND_COLOR = '#4f46e5';
+const DARK = '#0f172a';
+const BORDER = '#e2e8f0';
+const BG = '#f8fafc';
+
+function baseTemplate(content: string): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:40px 20px;background:${BG};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:${DARK};">
+  <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:12px;border:1px solid ${BORDER};overflow:hidden;">
+    <div style="background:${BRAND_COLOR};padding:28px 32px;">
+      <h1 style="margin:0;color:#fff;font-size:22px;font-weight:700;letter-spacing:-0.3px;">PayoutPower</h1>
+      <p style="margin:4px 0 0;color:rgba(255,255,255,0.75);font-size:13px;">Incentive Management System</p>
+    </div>
+    <div style="padding:32px;">
+      ${content}
+    </div>
+    <div style="padding:20px 32px;background:${BG};border-top:1px solid ${BORDER};text-align:center;">
+      <p style="margin:0;font-size:12px;color:#94a3b8;">
+        This is an automated message from PayoutPower. Please do not reply directly to this email.
+      </p>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+function btn(label: string, url: string): string {
+  return `<a href="${url}" style="display:inline-block;margin-top:20px;padding:12px 28px;background:${BRAND_COLOR};color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">${label}</a>`;
+}
+
+// ─── Public send wrapper ─────────────────────────────────────────────────────
+
+export async function sendMail({ to, subject, html }: { to: string; subject: string; html: string }) {
+  console.log(`[MAIL] Sending to: ${to} | Subject: ${subject}`);
+  try {
+    const info = await getTransporter().sendMail({ from: SMTP_FROM, to, subject, html });
+    console.log(`[MAIL] Sent — MessageID: ${info.messageId}`);
     return { success: true, messageId: info.messageId };
-  } catch (error) {
-    console.error("SMTP Error:", error);
-    return { success: false, error };
+  } catch (err: any) {
+    console.error('[MAIL] Failed:', err.message);
+    return { success: false, error: err.message };
   }
 }
 
-/**
- * 📊 INCENTIVE DISTRIBUTION NOTIFICATION
- */
-export async function sendIncentiveUpdate(to: string, userName: string, action: string, amount: number) {
-  const html = BASE_TEMPLATE(`
-        <p style="margin: 0; font-size: 18px; font-weight: 700;">Hello, ${userName}</p>
-        <p style="margin: 12px 0 0; color: ${COLORS.slate}; font-size: 15px;">A new administrative action has been logged regarding your incentive distributions.</p>
-        
-        <div style="background: ${COLORS.bg}; border-radius: 16px; padding: 24px; margin: 32px 0; border: 1px solid ${COLORS.border};">
-            <table style="width: 100%;">
-                <tr>
-                    <td style="font-size: 11px; font-weight: 700; color: ${COLORS.slate}; text-transform: uppercase;">Protocol Action</td>
-                    <td style="font-size: 11px; font-weight: 700; color: ${COLORS.slate}; text-transform: uppercase; text-align: right;">Impact Amount</td>
-                </tr>
-                <tr>
-                    <td style="font-size: 15px; font-weight: 700;">${action}</td>
-                    <td style="font-size: 20px; font-weight: 800; color: ${COLORS.primary}; text-align: right;">Rs. ${amount.toLocaleString()}</td>
-                </tr>
-            </table>
-        </div>
+// ─── Email templates ─────────────────────────────────────────────────────────
 
-        <div style="text-align: center;">
-            <a href="${process.env.NEXT_PUBLIC_APP_URL || '#'}" style="display: inline-block; padding: 14px 32px; background: ${COLORS.dark}; color: #ffffff; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 14px;">Verify in Dashboard</a>
-        </div>
-    `);
-
-  return sendMail({ to, subject: `[PayoutPower] Incentive Update: ${action}`, html });
+export async function sendWelcomeEmail(to: string, userName: string, tempPassword: string) {
+  const html = baseTemplate(`
+    <h2 style="margin:0 0 8px;color:${DARK};font-size:20px;">Welcome to PayoutPower, ${userName}!</h2>
+    <p style="margin:0 0 24px;color:#475569;line-height:1.6;">Your account has been created and is ready to use. Here are your login credentials:</p>
+    <div style="background:${BG};border:1px solid ${BORDER};border-radius:8px;padding:20px;margin:0 0 24px;">
+      <table style="width:100%;border-collapse:collapse;">
+        <tr><td style="padding:6px 0;color:#64748b;font-size:13px;width:100px;">Email</td><td style="padding:6px 0;font-weight:600;">${to}</td></tr>
+        <tr><td style="padding:6px 0;color:#64748b;font-size:13px;">Password</td><td style="padding:6px 0;font-weight:600;font-family:monospace;">${tempPassword}</td></tr>
+      </table>
+    </div>
+    <p style="margin:0 0 8px;color:#475569;">Please log in and change your password immediately.</p>
+    ${btn('Login to PayoutPower', `${APP_URL}/login`)}
+    <p style="margin:24px 0 0;font-size:12px;color:#94a3b8;">If you did not expect this email, please contact your administrator.</p>
+  `);
+  return sendMail({ to, subject: 'Welcome to PayoutPower — Your Account is Ready', html });
 }
 
-/**
- * 🔑 PASSWORD RESET DISPATCH
- */
-export async function sendPasswordResetEmail(to: string, userName: string, token: string) {
-  const html = BASE_TEMPLATE(`
-        <p style="margin: 0; font-size: 18px; font-weight: 700;">Password Reset Request</p>
-        <p style="margin: 12px 0 0; color: ${COLORS.slate}; font-size: 15px;">We received a request to reset the password for your account associated with <strong>${to}</strong>.</p>
-        
-        <div style="margin: 32px 0; padding: 20px; border-left: 4px solid ${COLORS.primary}; background: ${COLORS.bg}; text-align: center;">
-            <p style="margin: 0 0 10px; font-size: 11px; font-weight: 700; color: ${COLORS.slate}; text-transform: uppercase;">Recovery Token</p>
-            <code style="font-size: 14px; font-weight: 700; color: ${COLORS.dark}; background: #ffffff; padding: 8px 16px; border-radius: 8px; border: 1px solid ${COLORS.border};">${token}</code>
-        </div>
-
-        <div style="text-align: center;">
-            <p style="margin-bottom: 24px; color: ${COLORS.slate}; font-size: 13px;">If you did not request this, please ignore this email. The token will expire in 1 hour.</p>
-            <a href="${process.env.NEXT_PUBLIC_APP_URL || '#'}" style="display: inline-block; padding: 14px 32px; background: ${COLORS.primary}; color: #ffffff; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 14px;">Return to PayoutPower</a>
-        </div>
-    `);
-
-  return sendMail({ to, subject: `[PayoutPower] Automated Recovery: Password Reset`, html });
+export async function sendAdminSignupNotification(
+  adminEmail: string,
+  newUserName: string,
+  newUserEmail: string,
+  role: string
+) {
+  const html = baseTemplate(`
+    <h2 style="margin:0 0 8px;color:${DARK};font-size:20px;">New Account Request</h2>
+    <p style="margin:0 0 24px;color:#475569;line-height:1.6;">A new user has registered and is awaiting your approval.</p>
+    <div style="background:${BG};border:1px solid ${BORDER};border-radius:8px;padding:20px;margin:0 0 24px;">
+      <table style="width:100%;border-collapse:collapse;">
+        <tr><td style="padding:6px 0;color:#64748b;font-size:13px;width:100px;">Name</td><td style="padding:6px 0;font-weight:600;">${newUserName}</td></tr>
+        <tr><td style="padding:6px 0;color:#64748b;font-size:13px;">Email</td><td style="padding:6px 0;">${newUserEmail}</td></tr>
+        <tr><td style="padding:6px 0;color:#64748b;font-size:13px;">Role</td><td style="padding:6px 0;">${role}</td></tr>
+      </table>
+    </div>
+    <p style="margin:0;color:#475569;">Please review this request in the user management panel.</p>
+    ${btn('Review in Dashboard', `${APP_URL}/dashboard/users`)}
+  `);
+  return sendMail({ to: adminEmail, subject: `New ${role} Registration Pending Approval — ${newUserName}`, html });
 }
 
-/**
- * 🔔 ADMIN SIGNUP NOTIFICATION
- */
-export async function sendAdminSignupNotification(adminEmail: string, userName: string, userEmail: string, role: string) {
-  const html = BASE_TEMPLATE(`
-        <p style="margin: 0; font-size: 18px; font-weight: 700;">New Access Request</p>
-        <p style="margin: 12px 0 0; color: ${COLORS.slate}; font-size: 15px;">A new staff member has initiated a signup request and is awaiting administrative approval.</p>
-        
-        <div style="background: ${COLORS.bg}; border-radius: 16px; padding: 24px; margin: 32px 0; border: 1px solid ${COLORS.border};">
-            <div style="margin-bottom: 12px;">
-                <p style="margin: 0; font-size: 10px; font-weight: 700; color: ${COLORS.slate}; text-transform: uppercase;">Name</p>
-                <p style="margin: 0; font-size: 15px; font-weight: 700;">${userName}</p>
-            </div>
-            <div style="margin-bottom: 12px;">
-                <p style="margin: 0; font-size: 10px; font-weight: 700; color: ${COLORS.slate}; text-transform: uppercase;">Email</p>
-                <p style="margin: 0; font-size: 15px; font-weight: 700;">${userEmail}</p>
-            </div>
-            <div>
-                <p style="margin: 0; font-size: 10px; font-weight: 700; color: ${COLORS.slate}; text-transform: uppercase;">Requested Tier</p>
-                <p style="margin: 0; font-size: 15px; font-weight: 700; color: ${COLORS.amber};">${role.toUpperCase()}</p>
-            </div>
-        </div>
-
-        <div style="text-align: center;">
-            <a href="${process.env.NEXT_PUBLIC_APP_URL || '#'}/dashboard/users" style="display: inline-block; padding: 14px 32px; background: ${COLORS.dark}; color: #ffffff; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 14px;">Open Approval Queue</a>
-        </div>
-    `);
-
-  return sendMail({ to: adminEmail, subject: `[PayoutPower] ACTION REQUIRED: New Registration Pending`, html });
-}
-
-/**
- * ✅ USER APPROVAL NOTIFICATION
- */
-export async function sendUserStatusUpdate(userEmail: string, userName: string, status: 'approved' | 'rejected') {
+export async function sendUserStatusUpdate(
+  userEmail: string,
+  userName: string,
+  status: 'approved' | 'rejected'
+) {
   const isApproved = status === 'approved';
-  const html = BASE_TEMPLATE(`
-        <p style="margin: 0; font-size: 18px; font-weight: 700;">Protocol Status: ${status.toUpperCase()}</p>
-        <p style="margin: 12px 0 0; color: ${COLORS.slate}; font-size: 15px;">
-            ${isApproved
-      ? `Your signup request has been successfully vetted and approved. Your account is now active.`
-      : `Your access request to the system has been reviewed and declined at this time.`}
-        </p>
-        
-        ${isApproved ? `
-        <div style="margin: 32px 0; text-align: center;">
-            <a href="${process.env.NEXT_PUBLIC_APP_URL || '#'}" style="display: inline-block; padding: 14px 32px; background: ${COLORS.emerald}; color: #ffffff; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 14px;">Login to PayoutPower</a>
-        </div>
-        ` : ''}
-
-        <p style="margin-top: 32px; font-size: 12px; color: ${COLORS.slate};">This logic-based decision was made by an authenticated organizational administrator.</p>
-    `);
-
-  return sendMail({ to: userEmail, subject: `[PayoutPower] Identity Status Update: ${status.charAt(0).toUpperCase() + status.slice(1)}`, html });
+  const html = baseTemplate(`
+    <h2 style="margin:0 0 8px;color:${DARK};font-size:20px;">
+      Account ${isApproved ? 'Approved' : 'Not Approved'}
+    </h2>
+    <p style="margin:0 0 24px;color:#475569;line-height:1.6;">Hello ${userName},</p>
+    ${isApproved
+      ? `<p style="margin:0 0 24px;color:#475569;line-height:1.6;">
+           Great news — your PayoutPower account has been <strong style="color:#10b981;">approved</strong>. 
+           You can now log in and start tracking your incentives.
+         </p>
+         ${btn('Log In Now', `${APP_URL}/login`)}`
+      : `<p style="margin:0 0 24px;color:#475569;line-height:1.6;">
+           Unfortunately your account request was <strong style="color:#ef4444;">not approved</strong> at this time.
+           Please contact your administrator if you believe this is an error.
+         </p>`
+    }
+  `);
+  return sendMail({
+    to: userEmail,
+    subject: `Your PayoutPower Account Has Been ${isApproved ? 'Approved' : 'Rejected'}`,
+    html,
+  });
 }
-/**
- * 🚀 WELCOME EMAIL FOR NEW STAFF
- */
-export async function sendWelcomeEmail(to: string, userName: string, password: string) {
-  const html = BASE_TEMPLATE(`
-        <p style="margin: 0; font-size: 18px; font-weight: 700;">Welcome to the Team, ${userName}!</p>
-        <p style="margin: 12px 0 0; color: ${COLORS.slate}; font-size: 15px;">A new account has been provisioned for you on the PayoutPower Incentive Management Suite.</p>
-        
-        <div style="background: ${COLORS.bg}; border-radius: 16px; padding: 24px; margin: 32px 0; border: 1px solid ${COLORS.border};">
-            <p style="margin: 0 0 16px; font-size: 11px; font-weight: 700; color: ${COLORS.slate}; text-transform: uppercase;">Your Access Credentials</p>
-            <div style="margin-bottom: 12px;">
-                <p style="margin: 0; font-size: 10px; font-weight: 700; color: ${COLORS.slate}; uppercase;">Portal URL</p>
-                <p style="margin: 0; font-size: 14px; font-weight: 700; color: ${COLORS.primary};">${process.env.NEXT_PUBLIC_APP_URL || 'https://datamation-incentive.vercel.app'}</p>
-            </div>
-            <div style="margin-bottom: 12px;">
-                <p style="margin: 0; font-size: 10px; font-weight: 700; color: ${COLORS.slate}; uppercase;">Email Address</p>
-                <p style="margin: 0; font-size: 14px; font-weight: 700;">${to}</p>
-            </div>
-            <div>
-                <p style="margin: 0; font-size: 10px; font-weight: 700; color: ${COLORS.slate}; uppercase;">One-Time Password</p>
-                <code style="font-size: 14px; font-weight: 700; color: ${COLORS.dark}; background: #ffffff; padding: 4px 8px; border-radius: 6px; border: 1px solid ${COLORS.border};">${password}</code>
-            </div>
-        </div>
 
-        <div style="text-align: center;">
-            <a href="${process.env.NEXT_PUBLIC_APP_URL || '#'}" style="display: inline-block; padding: 14px 32px; background: ${COLORS.dark}; color: #ffffff; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 14px;">Log In Now</a>
-            <p style="margin-top: 24px; font-size: 12px; color: ${COLORS.slate};">For security reasons, we strongly recommend updating your password immediately after your first login.</p>
-        </div>
-    `);
+export async function sendPasswordResetEmail(to: string, userName: string, token: string) {
+  const resetUrl = `${APP_URL}/reset-password?token=${token}`;
+  const html = baseTemplate(`
+    <h2 style="margin:0 0 8px;color:${DARK};font-size:20px;">Password Reset Request</h2>
+    <p style="margin:0 0 24px;color:#475569;line-height:1.6;">Hello ${userName},</p>
+    <p style="margin:0 0 24px;color:#475569;line-height:1.6;">
+      We received a request to reset your PayoutPower password. Click the button below to set a new password. 
+      This link will expire in <strong>1 hour</strong>.
+    </p>
+    ${btn('Reset My Password', resetUrl)}
+    <p style="margin:24px 0 8px;color:#64748b;font-size:13px;">Or copy this link into your browser:</p>
+    <p style="margin:0;font-family:monospace;font-size:12px;color:#64748b;word-break:break-all;">${resetUrl}</p>
+    <p style="margin:24px 0 0;color:#94a3b8;font-size:12px;">
+      If you did not request a password reset, you can safely ignore this email. Your password will not change.
+    </p>
+  `);
+  return sendMail({ to, subject: 'PayoutPower — Password Reset Instructions', html });
+}
 
-  return sendMail({ to, subject: `[PayoutPower] Welcome! Your Staff Account is Ready`, html });
+export async function sendIncentiveUpdate(
+  to: string,
+  userName: string,
+  action: string,
+  amount: number
+) {
+  const formattedAmount = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
+  const html = baseTemplate(`
+    <h2 style="margin:0 0 8px;color:${DARK};font-size:20px;">Incentive Update</h2>
+    <p style="margin:0 0 24px;color:#475569;line-height:1.6;">Hello ${userName},</p>
+    <p style="margin:0 0 16px;color:#475569;line-height:1.6;">${action}</p>
+    <div style="background:${BG};border:1px solid ${BORDER};border-left:4px solid ${BRAND_COLOR};border-radius:8px;padding:20px;margin:0 0 24px;">
+      <p style="margin:0;font-size:13px;color:#64748b;">Amount</p>
+      <p style="margin:4px 0 0;font-size:28px;font-weight:700;color:${DARK};">${formattedAmount}</p>
+    </div>
+    ${btn('View My Dashboard', `${APP_URL}/dashboard`)}
+  `);
+  return sendMail({ to, subject: `PayoutPower — ${action}`, html });
+}
+
+export async function sendBatchApprovedEmail(
+  to: string,
+  userName: string,
+  batchName: string,
+  amount: number
+) {
+  const formattedAmount = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
+  const html = baseTemplate(`
+    <h2 style="margin:0 0 8px;color:${DARK};font-size:20px;">Commission Approved!</h2>
+    <p style="margin:0 0 24px;color:#475569;line-height:1.6;">Hello ${userName},</p>
+    <p style="margin:0 0 16px;color:#475569;line-height:1.6;">
+      Your incentive payout from batch <strong>${batchName}</strong> has been approved by management 
+      and forwarded to the Accounts team for disbursement.
+    </p>
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-left:4px solid #10b981;border-radius:8px;padding:20px;margin:0 0 24px;">
+      <p style="margin:0;font-size:13px;color:#059669;">Approved Amount</p>
+      <p style="margin:4px 0 0;font-size:28px;font-weight:700;color:#065f46;">${formattedAmount}</p>
+    </div>
+    ${btn('View in Dashboard', `${APP_URL}/dashboard`)}
+  `);
+  return sendMail({ to, subject: `Incentive Approved — ${formattedAmount} from ${batchName}`, html });
+}
+
+export async function sendBatchPaidEmail(
+  to: string,
+  userName: string,
+  batchName: string,
+  amount: number
+) {
+  const formattedAmount = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
+  const html = baseTemplate(`
+    <h2 style="margin:0 0 8px;color:${DARK};font-size:20px;">Payout Disbursed!</h2>
+    <p style="margin:0 0 24px;color:#475569;line-height:1.6;">Hello ${userName},</p>
+    <p style="margin:0 0 16px;color:#475569;line-height:1.6;">
+      Your incentive payment from batch <strong>${batchName}</strong> has been processed and disbursed by the Accounts team.
+    </p>
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-left:4px solid #10b981;border-radius:8px;padding:20px;margin:0 0 24px;">
+      <p style="margin:0;font-size:13px;color:#059669;">Amount Paid</p>
+      <p style="margin:4px 0 0;font-size:28px;font-weight:700;color:#065f46;">${formattedAmount}</p>
+    </div>
+    ${btn('View Payment History', `${APP_URL}/dashboard`)}
+    <p style="margin:24px 0 0;color:#94a3b8;font-size:12px;">Please check your bank account or pay slip for confirmation. Contact HR if you have any questions.</p>
+  `);
+  return sendMail({ to, subject: `Payout Processed — ${formattedAmount} from ${batchName}`, html });
 }

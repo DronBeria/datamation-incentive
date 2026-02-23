@@ -148,9 +148,8 @@ export async function POST(req: NextRequest) {
 
   const managerOverride = (assignment?.manager_id && calculatedCommission > 0) ? (calculatedCommission * 0.10) : 0;
 
-  // IMPORTANT: All entries start as 'pending_review' 
-  // unless Admin/Manager specifically wants to auto-approve (handled in UI via separate endpoint)
-  const status = 'pending_review';
+  // New sales start as 'earned' — they get moved to 'accrued' when batched, then 'paid' when disbursed
+  const status = 'earned';
 
   try {
     const result = await db.prepare(`
@@ -175,7 +174,7 @@ export async function POST(req: NextRequest) {
       id: newId,
       commission: calculatedCommission,
       status,
-      message: "Transaction blueprint successfully indexed for review"
+      message: "Sale logged successfully"
     });
   } catch (err: any) {
     console.error("[SALES_POST_ERROR]", err.message);

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
-import { sendIncentiveUpdate } from "@/lib/email";
+import { sendBatchApprovedEmail, sendBatchPaidEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -52,8 +52,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         const user = await db.prepare("SELECT email, full_name FROM public.users WHERE id = ?").get(sp.salesperson_id) as any;
         if (user?.email) {
           try {
-            await sendIncentiveUpdate(user.email, user.full_name, `Incentive Approved: ${batch.batch_name}`, totalAmount);
-          } catch (e) { console.warn("Email dispatch deferred", e); }
+            await sendBatchApprovedEmail(user.email, user.full_name, batch.batch_name, totalAmount);
+          } catch (e) { console.warn("[BATCH_APPROVE] Email dispatch failed:", e); }
         }
       }
 
@@ -90,6 +90,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       for (const sp of salespersons) {
         await db.prepare("INSERT INTO public.notifications (user_id, title, message, type) VALUES (?, 'Payout Disbursed!', 'The finance team has processed your payment.', 'success')")
           .run(sp.salesperson_id);
+
+        // Email notification for paid
+        const amtData = await db.prepare("SELECT SUM(amount) as total FROM public.batch_items WHERE batch_id = ? AND salesperson_id = ?").get(batchId, sp.salesperson_id) as any;
+        const totalAmount = parseFloat(amtData?.total || 0);
+        const user = await db.prepare("SELECT email, full_name FROM public.users WHERE id = ?").get(sp.salesperson_id) as any;
+        if (user?.email) {
+          try {
+            await sendBatchPaidEmail(user.email, user.full_name, batch.batch_name, totalAmount);
+          } catch (e) { console.warn("[BATCH_PAID] Email dispatch failed:", e); }
+        }
       }
 
     } else {
