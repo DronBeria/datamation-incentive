@@ -78,20 +78,23 @@ export default function UsersPage() {
 
   const fetchUsers = () => {
     setLoading(true);
-    fetch("/api/users")
+    // Add timestamp to bust any browser/Next.js cache
+    fetch(`/api/users?t=${Date.now()}`)
       .then(r => r.json())
       .then(d => {
-        console.log("[USERS_PAGE] Received Raw Data:", d);
         if (Array.isArray(d)) {
+          console.log("[USERS_PAGE] Server returned", d.length, "users");
           setUsers(d);
+          if (d.length > 0) {
+            toast.success(`Synced ${d.length} members from cloud`);
+          }
         } else if (d && d.error) {
-          console.error("[USERS_PAGE] API error:", d.error, d.debug);
-          toast.error("Failed to load users: " + d.error);
+          toast.error("Cloud Error: " + d.error);
         }
       })
       .catch(err => {
         console.error("[USERS_PAGE] Fetch failed:", err);
-        toast.error("Network error loading users");
+        toast.error("Network connection issue");
       })
       .finally(() => setLoading(false));
   };
