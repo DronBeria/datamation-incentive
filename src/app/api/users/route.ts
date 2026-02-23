@@ -8,7 +8,14 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const session = await getSession();
-  if (!session || !["admin", "manager"].includes(session.role)) {
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Industrial safety: Force role to lowercase for robust check
+  const role = (session.role || "").toLowerCase();
+
+  if (!["admin", "manager", "accounts"].includes(role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -26,22 +33,26 @@ export async function GET() {
   `;
 
   const params: any[] = [];
-  if (session.role === "manager") {
+
+  // ADMINS see everything. MANAGERS see their team. 
+  // If role is manager, we filter. If admin, we skip.
+  if (role === "manager") {
     query += " WHERE u.manager_id = ? OR u.id = ?";
     params.push(session.id, session.id);
-  } else if (session.role !== "admin") {
-    // Other roles (accounts) can only see themselves/relevant folks if needed, 
-    // but for now admins/managers are primary users of this page.
   }
 
   query += " ORDER BY u.id";
 
   try {
     const users = await db.prepare(query).all(...params);
+    console.log(`[USERS_API] Fetched ${users.length} users for role: ${role}`);
     return NextResponse.json(users);
   } catch (e: any) {
-    console.error('[USERS_API] GET failure:', e.message);
-    return NextResponse.json({ error: e.message || "Failed to fetch users" }, { status: 500 });
+    console.error('[USERS_API] Critical SQL Failure:', e.message);
+    return NextResponse.json({
+      error: "Database Access Error",
+      details: e.message
+    }, { status: 500 });
   }
 }
 
