@@ -511,8 +511,8 @@ function BatchesContent() {
 
       {/* ── Create Batch Dialog ─────────────────────────────── */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent className="max-w-[1100px] w-[95vw] p-0 overflow-hidden border border-slate-200 shadow-2xl rounded-2xl bg-white">
-          <div className="flex flex-col h-[85vh] max-h-[820px]">
+        <DialogContent className="max-w-[1300px] w-[98vw] p-0 overflow-hidden border border-slate-200 shadow-2xl rounded-2xl bg-white">
+          <div className="flex flex-col h-[90vh] max-h-[900px]">
 
             {/* ── Header ── */}
             <div className="flex items-center justify-between px-8 py-5 border-b border-slate-100 bg-white shrink-0">
