@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
+import { createClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -9,40 +9,55 @@ export async function GET() {
   try {
     const session = await getSession();
     if (!session) {
+      console.error("[USERS_API] No session found");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const role = (session.role || "").toLowerCase();
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false } }
+    );
 
-    // 1. Build a robust query with LEFT JOINs to prevent disappearing rows
-    let query = `
-      SELECT 
-        u.id, u.email, u.full_name, u.department, u.is_active, u.approval_status, u.created_at, u.manager_id,
-        COALESCE(r.name, 'unknown') as role,
-        sch.name as scheme_name,
-        m.full_name as manager_name
-      FROM public.users u 
-      LEFT JOIN public.roles r ON u.role_id = r.id
-      LEFT JOIN public.users m ON u.manager_id = m.id
-      LEFT JOIN public.user_scheme_assignments usa ON u.id = usa.user_id AND (usa.end_date IS NULL OR usa.end_date >= CURRENT_DATE)
-      LEFT JOIN public.incentive_schemes sch ON usa.scheme_id = sch.id
-    `;
+    const userRole = (session.role || "").toLowerCase().trim();
+    console.log(`[USERS_API] Active: ${session.email} | Role: ${userRole} | ID: ${session.id}`);
 
-    const params: any[] = [];
+    // Direct fetch using Supabase SDK to eliminate all middleware/RPC variables
+    let query = supabase
+      .from('users')
+      .select(`
+        id, email, full_name, department, is_active, approval_status, created_at, manager_id,
+        role:roles(name),
+        scheme_assignments:user_scheme_assignments(
+          scheme:incentive_schemes(name)
+        ),
+        manager:users!manager_id(full_name)
+      `);
 
-    // 2. ONLY filter if the user is strictly a manager. Admins/Accounts see all.
-    if (role === "manager") {
-      query += " WHERE u.manager_id = ? OR u.id = ?";
-      params.push(session.id, session.id);
+    // Only apply manager filter if strictly a manager
+    if (userRole === 'manager') {
+      query = query.or(`manager_id.eq.${session.id},id.eq.${session.id}`);
     }
 
-    query += " ORDER BY u.id DESC";
+    query = query.order('id', { ascending: false });
 
-    const users = await db.prepare(query).all(...params);
+    const { data, error } = await query;
 
-    console.log(`[USERS_API] Session: ${session.email} | Role: ${role} | Found: ${users.length}`);
+    if (error) {
+      console.error('[USERS_API] Supabase Fetch Error:', error.message);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
 
-    // Return with headers to prevent any caching
+    // Flatten to match the dashboard's expected data structure
+    const users = (data || []).map((u: any) => ({
+      ...u,
+      role: u.role?.name || 'unknown',
+      scheme_name: u.scheme_assignments?.find((sa: any) => !sa.end_date)?.scheme?.name || null,
+      manager_name: u.manager?.full_name || null
+    }));
+
+    console.log(`[USERS_API] Returning ${users.length} members`);
+
     return new NextResponse(JSON.stringify(users), {
       status: 200,
       headers: {
@@ -51,7 +66,7 @@ export async function GET() {
       },
     });
   } catch (error: any) {
-    console.error('[USERS_API] Critical Error:', error.message);
+    console.error('[USERS_API] Crash:', error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
