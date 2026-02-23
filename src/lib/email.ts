@@ -1,47 +1,8 @@
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
-declare global {
-  var _smtpTransporter: nodemailer.Transporter | undefined;
-}
-
-const SMTP_HOST = process.env.SMTP_HOST || 'smtp.gmail.com';
-const SMTP_PORT = parseInt(process.env.SMTP_PORT || '465', 10);
-const SMTP_USER = process.env.SMTP_USER || 'datamationincentive@gmail.com';
-// Strip surrounding quotes that .env readers sometimes include
-const SMTP_PASS = (process.env.SMTP_PASS || '').replace(/^["']|["']$/g, '').trim();
-const SMTP_FROM = process.env.SMTP_FROM || `"PayoutPower" <${SMTP_USER}>`;
+const resend = new Resend(process.env.RESEND_API_KEY);
+const SMTP_FROM = process.env.SMTP_FROM || 'onboarding@resend.dev';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001';
-
-function getTransporter(): nodemailer.Transporter {
-  // Port 465 = SSL (secure: true). Port 587 = STARTTLS (secure: false).
-  const useSSL = SMTP_PORT === 465;
-
-  const config: nodemailer.TransportOptions = {
-    host: SMTP_HOST,
-    port: SMTP_PORT,
-    secure: useSSL,
-    auth: {
-      user: SMTP_USER,
-      pass: SMTP_PASS,
-    },
-    connectionTimeout: 30000,
-    greetingTimeout: 30000,
-  } as any;
-
-  if (process.env.NODE_ENV === 'production') {
-    return nodemailer.createTransport(config);
-  }
-
-  if (!global._smtpTransporter) {
-    console.log(`[SMTP] Initializing transporter ${SMTP_HOST}:${SMTP_PORT} SSL=${useSSL}`);
-    global._smtpTransporter = nodemailer.createTransport(config);
-    global._smtpTransporter.verify((err) => {
-      if (err) console.error('[SMTP] Verification failed:', err.message);
-      else console.log('[SMTP] Ready — transporter verified');
-    });
-  }
-  return global._smtpTransporter;
-}
 
 const BRAND_COLOR = '#4f46e5';
 const DARK = '#0f172a';
@@ -78,13 +39,24 @@ function btn(label: string, url: string): string {
 // ─── Public send wrapper ─────────────────────────────────────────────────────
 
 export async function sendMail({ to, subject, html }: { to: string; subject: string; html: string }) {
-  console.log(`[MAIL] Sending to: ${to} | Subject: ${subject}`);
+  console.log(`[MAIL] Dispatching via Resend to: ${to} | Subject: ${subject}`);
   try {
-    const info = await getTransporter().sendMail({ from: SMTP_FROM, to, subject, html });
-    console.log(`[MAIL] Sent — MessageID: ${info.messageId}`);
-    return { success: true, messageId: info.messageId };
+    const { data, error } = await resend.emails.send({
+      from: SMTP_FROM,
+      to,
+      subject,
+      html,
+    });
+
+    if (error) {
+      console.error('[MAIL] Resend Error:', error);
+      return { success: false, error: error.message };
+    }
+
+    console.log(`[MAIL] Dispatched — ID: ${data?.id}`);
+    return { success: true, messageId: data?.id };
   } catch (err: any) {
-    console.error('[MAIL] Failed:', err.message);
+    console.error('[MAIL] System failure:', err.message);
     return { success: false, error: err.message };
   }
 }
