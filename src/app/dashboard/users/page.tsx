@@ -78,9 +78,22 @@ export default function UsersPage() {
 
   const fetchUsers = () => {
     setLoading(true);
-    fetch("/api/users").then(r => r.json()).then(d => {
-      if (Array.isArray(d)) setUsers(d);
-    }).finally(() => setLoading(false));
+    fetch("/api/users")
+      .then(r => r.json())
+      .then(d => {
+        console.log("[USERS_PAGE] API response:", JSON.stringify(d).substring(0, 300));
+        if (Array.isArray(d)) {
+          setUsers(d);
+        } else if (d && d.error) {
+          console.error("[USERS_PAGE] API error:", d.error, d.debug);
+          toast.error("Failed to load users: " + d.error);
+        }
+      })
+      .catch(err => {
+        console.error("[USERS_PAGE] Fetch failed:", err);
+        toast.error("Network error loading users");
+      })
+      .finally(() => setLoading(false));
   };
 
   const fetchSchemes = () => {
