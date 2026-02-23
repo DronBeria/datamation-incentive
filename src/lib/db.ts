@@ -105,13 +105,13 @@ export const db = {
       }
     },
     run: async (...params: unknown[]): Promise<{ lastInsertRowid: string | number }> => {
-      const sql = formatQuery(query, params);
+      const sql = formatQuery(query.trim(), params);
       try {
         const result = await execRun(sql);
-        console.log(`[DB] run() id=${result.lastInsertRowid} | ${sql.substring(0, 60)}...`);
+        console.log(`[DB] run() id=${result.lastInsertRowid} | ${sql.substring(0, 100)}...`);
         return result;
       } catch (err: any) {
-        console.error('[DB] run() failed:', err.message);
+        console.error('[DB] run() failed:', err.message, '\nSQL:', sql);
         throw err;
       }
     },

@@ -152,12 +152,13 @@ export async function POST(req: NextRequest) {
   const status = 'earned';
 
   try {
-    const result = await db.prepare(`
-      INSERT INTO public.sales_logs 
-      (salesperson_id, client_name, deal_value, product, sale_date, scheme_id, calculated_commission, override_commission, status, notes, quantity, created_at, updated_at) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    const query = `
+      INSERT INTO sales_logs 
+      (salesperson_id, client_name, deal_value, product, sale_date, scheme_id, calculated_commission, override_commission, status, notes, quantity) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       RETURNING id
-    `).run(
+    `;
+    const result = await db.prepare(query).run(
       spId, client_name, val, product || "", sale_date, schemeId,
       calculatedCommission, managerOverride, status, body.notes || (is_custom ? "Custom Agreement Applied" : ""), qty
     );
@@ -165,7 +166,7 @@ export async function POST(req: NextRequest) {
     const newId = result.lastInsertRowid;
 
     await db.prepare(
-      "INSERT INTO public.audit_logs (user_id, action, entity_type, entity_id, new_value) VALUES (?, 'CREATE', 'sales_log', ?, ?)"
+      "INSERT INTO audit_logs (user_id, action, entity_type, entity_id, new_value) VALUES (?, 'CREATE', 'sales_log', ?, ?)"
     ).run(session.id, newId, JSON.stringify({
       client_name, deal_value: val, commission: calculatedCommission, status, quantity: qty, is_custom: !!is_custom
     }));

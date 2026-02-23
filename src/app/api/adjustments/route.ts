@@ -53,13 +53,13 @@ export async function POST(req: NextRequest) {
 
     try {
         const result = await db.prepare(`
-          INSERT INTO public.adjustments (salesperson_id, amount, reason, type, status)
+          INSERT INTO adjustments (salesperson_id, amount, reason, type, status)
           VALUES (?, ?, ?, ?, 'pending')
           RETURNING id
         `).run(user_id, amount, reason, type);
 
         await db.prepare(
-            "INSERT INTO public.audit_logs (user_id, action, entity_type, entity_id, new_value) VALUES (?, 'CREATE', 'adjustment', ?, ?)"
+            "INSERT INTO audit_logs (user_id, action, entity_type, entity_id, new_value) VALUES (?, 'CREATE', 'adjustment', ?, ?)"
         ).run(session.id, result.lastInsertRowid, JSON.stringify(body));
 
         // Email notification (non-blocking)

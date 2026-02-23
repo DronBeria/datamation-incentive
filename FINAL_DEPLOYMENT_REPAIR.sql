@@ -129,7 +129,7 @@ CREATE TABLE IF NOT EXISTS public.batch_items (
 
 CREATE TABLE IF NOT EXISTS public.adjustments (
   id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-  user_id BIGINT NOT NULL REFERENCES public.users(id),
+  salesperson_id BIGINT NOT NULL REFERENCES public.users(id),
   amount NUMERIC NOT NULL,
   type TEXT CHECK(type IN ('bonus', 'clawback', 'correction')),
   reason TEXT,
