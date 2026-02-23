@@ -18,17 +18,20 @@ export async function GET() {
       r.name as role,
       sch.name as scheme_name,
       m.full_name as manager_name
-    FROM users u 
-    JOIN roles r ON u.role_id = r.id
-    LEFT JOIN users m ON u.manager_id = m.id
-    LEFT JOIN user_scheme_assignments usa ON u.id = usa.user_id AND (usa.end_date IS NULL OR usa.end_date >= CURRENT_DATE)
-    LEFT JOIN incentive_schemes sch ON usa.scheme_id = sch.id
+    FROM public.users u 
+    JOIN public.roles r ON u.role_id = r.id
+    LEFT JOIN public.users m ON u.manager_id = m.id
+    LEFT JOIN public.user_scheme_assignments usa ON u.id = usa.user_id AND (usa.end_date IS NULL OR usa.end_date >= CURRENT_DATE)
+    LEFT JOIN public.incentive_schemes sch ON usa.scheme_id = sch.id
   `;
 
   const params: any[] = [];
   if (session.role === "manager") {
     query += " WHERE u.manager_id = ? OR u.id = ?";
     params.push(session.id, session.id);
+  } else if (session.role !== "admin") {
+    // Other roles (accounts) can only see themselves/relevant folks if needed, 
+    // but for now admins/managers are primary users of this page.
   }
 
   query += " ORDER BY u.id";

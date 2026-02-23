@@ -81,7 +81,7 @@ export default function UsersPage() {
     fetch("/api/users")
       .then(r => r.json())
       .then(d => {
-        console.log("[USERS_PAGE] API response:", JSON.stringify(d).substring(0, 300));
+        console.log("[USERS_PAGE] Received Raw Data:", d);
         if (Array.isArray(d)) {
           setUsers(d);
         } else if (d && d.error) {
@@ -546,7 +546,9 @@ export default function UsersPage() {
             </Table>
           </div>
           <div className="px-6 py-3 border-t border-slate-50 bg-slate-50/30">
-            <p className="text-[11px] font-semibold text-slate-400 text-right uppercase tracking-widest">{filtered.length} members total</p>
+            <p className="text-[11px] font-semibold text-slate-400 text-right uppercase tracking-widest">
+              Visible: {filtered.length} / Global: {users.length}
+            </p>
           </div>
         </Card>
       )}
