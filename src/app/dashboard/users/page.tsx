@@ -242,28 +242,35 @@ export default function UsersPage() {
   const filtered = useMemo(() => {
     return users.filter(u => {
       // 1. Isolation: Approval Queue vs Main Directory
-      const isPending = u.approval_status === "pending";
+      const isPending = String(u.approval_status).toLowerCase() === "pending";
       if (activeTab === "approvals") return isPending;
       if (isPending) return false;
 
-      // 2. Search Engine (Robuster checks)
-      const term = search.toLowerCase();
-      const matchSearch =
-        (u.full_name || "").toLowerCase().includes(term) ||
-        (u.email || "").toLowerCase().includes(term) ||
-        (u.department || "").toLowerCase().includes(term);
+      // 2. Search Engine (Case-insensitive)
+      const term = (search || "").toLowerCase().trim();
+      const name = (u.full_name || "").toLowerCase();
+      const email = (u.email || "").toLowerCase();
+      const dept = (u.department || "").toLowerCase();
+
+      const matchSearch = term === "" || name.includes(term) || email.includes(term) || dept.includes(term);
 
       // 3. Selection Filters
-      const matchRole = roleFilter === "all" || u.role === roleFilter;
+      const userRole = (u.role || "").toLowerCase();
+      const matchRole = roleFilter === "all" || userRole === roleFilter.toLowerCase();
 
-      // Robust Boolean Logic for Industrial Databases (Handles 1/0, TRUE/FALSE, true/false)
-      const isActive = u.is_active == true || u.is_active == 1 || String(u.is_active).toLowerCase() === 'true';
+      // Robust Boolean Logic
+      const isActive = u.is_active === true || u.is_active === 1 || String(u.is_active).toLowerCase() === 'true';
 
       let matchStatus = true;
       if (statusFilter === "active") matchStatus = isActive;
       else if (statusFilter === "inactive") matchStatus = !isActive;
 
-      return matchSearch && matchRole && matchStatus;
+      const shown = matchSearch && matchRole && matchStatus;
+      if (!shown && users.length > 0 && search === "" && roleFilter === "all" && statusFilter === "all") {
+        console.warn("[USERS_PAGE] User filtered out unexpectedly:", u.full_name, { isPending, matchSearch, matchRole, matchStatus });
+      }
+
+      return shown;
     });
   }, [users, search, roleFilter, statusFilter, activeTab]);
 
@@ -402,7 +409,7 @@ export default function UsersPage() {
               <TableBody>
                 {filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-20">
+                    <TableCell colSpan={6} className="text-center py-20">
                       <div className="flex flex-col items-center gap-3">
                         <Users className="h-8 w-8 text-slate-200" />
                         <p className="text-sm font-semibold text-slate-900">No members found</p>
@@ -419,7 +426,7 @@ export default function UsersPage() {
                             const isActive = u.is_active == true || u.is_active == 1 || String(u.is_active).toLowerCase() === 'true';
                             return (
                               <div className={`h-10 w-10 rounded-lg ${isActive ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-slate-50 text-slate-300 border-slate-100"} border flex items-center justify-center font-bold text-sm shadow-sm transition-all group-hover:bg-white`}>
-                                {u.full_name[0]}
+                                {u.full_name?.[0] || '?'}
                               </div>
                             );
                           })()}

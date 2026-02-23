@@ -25,50 +25,19 @@ export async function GET() {
     LEFT JOIN incentive_schemes sch ON usa.scheme_id = sch.id
   `;
 
+  const params: any[] = [];
   if (session.role === "manager") {
-    query += ` WHERE u.manager_id = '${session.id}' OR u.id = '${session.id}'`;
+    query += " WHERE u.manager_id = ? OR u.id = ?";
+    params.push(session.id, session.id);
   }
 
   query += " ORDER BY u.id";
 
   try {
-    const users = await db.prepare(query).all();
-
-    // If the silent catch in db.ts returned [], try direct RPC to get the real error
-    if (users.length === 0) {
-      const { createClient } = await import("@supabase/supabase-js");
-      const directClient = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        { auth: { persistSession: false } }
-      );
-
-      const trimmedQuery = query.trim().replace(/;$/, '');
-      const { data: directData, error: directError } = await directClient.rpc('exec_sql', { sql_query: trimmedQuery });
-
-      if (directError) {
-        console.error('[USERS_API] Direct RPC error:', directError.message);
-        return NextResponse.json({
-          error: directError.message,
-          debug: { query: trimmedQuery.substring(0, 300), hint: "exec_sql RPC failed" }
-        }, { status: 500 });
-      }
-
-      // Parse the direct result
-      let directRows: any[] = [];
-      if (Array.isArray(directData)) {
-        directRows = directData;
-      } else if (directData && typeof directData === 'object') {
-        directRows = Array.isArray(Object.values(directData)[0]) ? Object.values(directData)[0] as any[] : [directData];
-      }
-
-      console.log('[USERS_API] Direct RPC returned:', directRows.length, 'rows');
-      return NextResponse.json(directRows);
-    }
-
+    const users = await db.prepare(query).all(...params);
     return NextResponse.json(users);
   } catch (e: any) {
-    console.error('[USERS_API] Exception:', e.message);
+    console.error('[USERS_API] GET failure:', e.message);
     return NextResponse.json({ error: e.message || "Failed to fetch users" }, { status: 500 });
   }
 }

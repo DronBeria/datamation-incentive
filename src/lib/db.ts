@@ -41,15 +41,33 @@ function formatQuery(query: string, params: unknown[]): string {
 async function execAll(sql: string): Promise<any[]> {
   const { data, error } = await supabase.rpc('exec_sql', { sql_query: sql });
   if (error) {
-    console.error('[DB] exec_sql error:', error.message, '\nQuery:', sql.substring(0, 200));
-    throw new Error(error.message);
+    console.error('[DB] exec_sql (all) error:', error.message, '| SQL:', sql.substring(0, 500));
+    throw new Error(`DB_ERROR: ${error.message}`);
   }
-  // exec_sql returns: [{exec_sql: [...]}, ...] or directly [...]
-  if (Array.isArray(data) && data.length > 0 && data[0] && 'exec_sql' in data[0]) {
-    const rows = data[0].exec_sql;
-    return Array.isArray(rows) ? rows : [];
+
+  if (!data) return [];
+
+  // Robust parsing of different possible RPC result shapes
+  let rows: any[] = [];
+  if (Array.isArray(data)) {
+    if (data.length > 0 && typeof data[0] === 'object' && 'exec_sql' in data[0]) {
+      // Shape: [{ exec_sql: [row1, row2] }]
+      rows = Array.isArray(data[0].exec_sql) ? data[0].exec_sql : [];
+    } else {
+      // Shape: [row1, row2]
+      rows = data;
+    }
+  } else if (typeof data === 'object') {
+    // Shape: { exec_sql: [row1, row2] }
+    if ('exec_sql' in data && Array.isArray((data as any).exec_sql)) {
+      rows = (data as any).exec_sql;
+    } else {
+      // Single row object? Wrap in array
+      rows = [data];
+    }
   }
-  return Array.isArray(data) ? data : [];
+
+  return rows;
 }
 
 /**
@@ -59,18 +77,27 @@ async function execAll(sql: string): Promise<any[]> {
 async function execRun(sql: string): Promise<{ lastInsertRowid: string | number }> {
   const { data, error } = await supabase.rpc('exec_sql', { sql_query: sql });
   if (error) {
-    console.error('[DB] exec_sql (run) error:', error.message, '\nQuery:', sql.substring(0, 200));
-    throw new Error(error.message);
+    console.error('[DB] exec_sql (run) error:', error.message, '| SQL:', sql.substring(0, 500));
+    throw new Error(`DB_WRITE_ERROR: ${error.message}`);
   }
-  // Try to extract the id from RETURNING clause result
+
   let rows: any[] = [];
-  if (Array.isArray(data) && data.length > 0 && data[0] && 'exec_sql' in data[0]) {
-    rows = Array.isArray(data[0].exec_sql) ? data[0].exec_sql : [];
-  } else if (Array.isArray(data)) {
-    rows = data;
+  if (Array.isArray(data)) {
+    if (data.length > 0 && typeof data[0] === 'object' && 'exec_sql' in data[0]) {
+      rows = Array.isArray(data[0].exec_sql) ? data[0].exec_sql : [];
+    } else {
+      rows = data;
+    }
+  } else if (data && typeof data === 'object') {
+    if ('exec_sql' in data && Array.isArray((data as any).exec_sql)) {
+      rows = (data as any).exec_sql;
+    } else {
+      rows = [data];
+    }
   }
-  const firstRow = rows[0];
-  const rowId = firstRow?.id ?? firstRow?.lastInsertRowid ?? 0;
+
+  const firstRow = rows[0] || {};
+  const rowId = firstRow.id ?? firstRow.lastInsertRowid ?? 0;
   return { lastInsertRowid: rowId };
 }
 
@@ -85,11 +112,11 @@ export const db = {
       const sql = formatQuery(query, params);
       try {
         const rows = await execAll(sql);
-        console.log(`[DB] all() ${rows.length} rows | ${sql.substring(0, 60)}...`);
+        console.log(`[DB] all() -> ${rows.length} rows`);
         return rows;
       } catch (err: any) {
-        console.error('[DB] all() failed:', err.message);
-        return [];
+        console.error('[DB] all() exception:', err.message);
+        throw err; // DO NOT SWALLOW
       }
     },
     get: async (...params: unknown[]): Promise<any | null> => {
@@ -97,21 +124,21 @@ export const db = {
       try {
         const rows = await execAll(sql);
         const row = rows[0] ?? null;
-        console.log(`[DB] get() ${row ? 'found' : 'null'} | ${sql.substring(0, 60)}...`);
+        console.log(`[DB] get() -> ${row ? 'row found' : 'null'}`);
         return row;
       } catch (err: any) {
-        console.error('[DB] get() failed:', err.message);
-        return null;
+        console.error('[DB] get() exception:', err.message);
+        throw err; // DO NOT SWALLOW
       }
     },
     run: async (...params: unknown[]): Promise<{ lastInsertRowid: string | number }> => {
       const sql = formatQuery(query.trim(), params);
       try {
         const result = await execRun(sql);
-        console.log(`[DB] run() id=${result.lastInsertRowid} | ${sql.substring(0, 100)}...`);
+        console.log(`[DB] run() -> success (id: ${result.lastInsertRowid})`);
         return result;
       } catch (err: any) {
-        console.error('[DB] run() failed:', err.message, '\nSQL:', sql);
+        console.error('[DB] run() exception:', err.message);
         throw err;
       }
     },
