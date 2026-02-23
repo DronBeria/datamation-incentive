@@ -465,9 +465,9 @@ export default function UsersPage() {
                       <TableCell>
                         <div className="flex flex-col">
                           <span className="text-[10px] font-bold text-slate-600 truncate">
-                            {u.last_login ? new Date(u.last_login).toLocaleDateString() : "Never"}
+                            {u.last_login ? new Date(u.last_login).toLocaleDateString() : "—"}
                           </span>
-                          <span className="text-[9px] text-slate-400 font-medium">Joined {new Date(u.created_at).toLocaleDateString()}</span>
+                          <span className="text-[9px] text-slate-400 font-medium">Joined {u.created_at ? new Date(u.created_at).toLocaleDateString() : "—"}</span>
                         </div>
                       </TableCell>
                       <TableCell className="text-right pr-6">

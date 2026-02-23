@@ -18,15 +18,12 @@ export async function GET() {
       r.name as role,
       sch.name as scheme_name,
       m.full_name as manager_name
-    FROM public.users u 
-    JOIN public.roles r ON u.role_id = r.id
-    LEFT JOIN public.users m ON u.manager_id = m.id
-    LEFT JOIN public.user_scheme_assignments usa ON u.id = usa.user_id AND (usa.end_date IS NULL OR usa.end_date >= CURRENT_DATE)
-    LEFT JOIN public.incentive_schemes sch ON usa.scheme_id = sch.id
+    FROM users u 
+    JOIN roles r ON u.role_id = r.id
+    LEFT JOIN users m ON u.manager_id = m.id
+    LEFT JOIN user_scheme_assignments usa ON u.id = usa.user_id AND (usa.end_date IS NULL OR usa.end_date >= CURRENT_DATE)
+    LEFT JOIN incentive_schemes sch ON usa.scheme_id = sch.id
   `;
-
-  // Explicitly select last_login if it exists
-  query = query.replace('u.manager_id,', 'u.manager_id, u.last_login,');
 
   const params: any[] = [];
   if (session.role === "manager") {
