@@ -129,7 +129,7 @@ function BatchDetailModal({ batch, onClose, user, onAction, actionLoading }: any
   const cfg = STATUS_CONFIG[batch.status];
   return (
     <Dialog open={!!batch} onOpenChange={onClose}>
-      <DialogContent className="max-w-xl p-0 overflow-hidden border border-slate-200 shadow-2xl rounded-3xl bg-white">
+      <DialogContent className="max-w-2xl p-0 overflow-hidden border border-slate-200 shadow-2xl rounded-3xl bg-white">
         <div className="bg-slate-900 p-8 text-white">
           <div className="flex items-center gap-4">
             <div className={`h-10 w-10 rounded-xl ${cfg.class} flex items-center justify-center shadow-sm`}>

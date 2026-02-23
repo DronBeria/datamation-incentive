@@ -104,16 +104,16 @@ export async function POST(req: NextRequest) {
       schemeId = null;
     } else {
       const activeSchemeId = schemeId || assignment?.scheme_id;
-      let rules = assignment?.scheme_id === activeSchemeId ? assignment?.scheme : null;
+      let rules = (assignment as any)?.scheme_id === activeSchemeId ? (assignment as any)?.scheme : null;
 
       if (activeSchemeId && !rules) {
         const { data } = await supabase.from('incentive_schemes').select('*').eq('id', activeSchemeId).single();
-        rules = data;
+        rules = data as any;
       }
 
       if (rules) {
-        schemeId = rules.id;
-        const { calculation_type, base_rate, target_threshold, bonus_rate } = rules;
+        schemeId = (rules as any).id;
+        const { calculation_type, base_rate, target_threshold, bonus_rate } = rules as any;
         if (calculation_type === 'percentage') calculatedCommission = val * base_rate;
         else if (calculation_type === 'tier_based') calculatedCommission = val >= target_threshold ? val * bonus_rate : val * base_rate;
         else if (calculation_type === 'fixed_per_qty') calculatedCommission = base_rate * qty;
@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (isNaN(calculatedCommission) || !isFinite(calculatedCommission)) calculatedCommission = 0;
-    const managerOverride = (assignment?.user?.manager_id && calculatedCommission > 0) ? (calculatedCommission * 0.10) : 0;
+    const managerOverride = ((assignment as any)?.user?.manager_id && calculatedCommission > 0) ? (calculatedCommission * 0.10) : 0;
 
     const { data: newLog, error: sErr } = await supabase
       .from('sales_logs')

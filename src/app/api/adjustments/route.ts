@@ -1,81 +1,102 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
+import { createClient } from "@supabase/supabase-js";
 import { sendIncentiveUpdate } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
+function getSupabase() {
+    return createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        { auth: { persistSession: false } }
+    );
+}
+
 export async function GET(req: NextRequest) {
-    const session = await getSession();
-    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const url = new URL(req.url);
-    const userId = url.searchParams.get("userId");
-
-    let query = `
-        SELECT a.*, u.full_name 
-        FROM public.adjustments a 
-        JOIN public.users u ON a.salesperson_id = u.id
-    `;
-    const params: any[] = [];
-
-    if (session.role === "salesperson") {
-        query += " WHERE a.salesperson_id = ?";
-        params.push(session.id);
-    } else if (userId) {
-        query += " WHERE a.salesperson_id = ?";
-        params.push(userId);
-    }
-
-    query += " ORDER BY a.created_at DESC";
-
     try {
-        const rows = await db.prepare(query).all(...params);
-        return NextResponse.json(rows);
-    } catch (err: any) {
-        console.error("[ADJUSTMENTS_GET_ERROR]", err.message);
-        return NextResponse.json({ error: err.message }, { status: 500 });
+        const session = await getSession();
+        if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+        const url = new URL(req.url);
+        const userId = url.searchParams.get("userId");
+        const supabase = getSupabase();
+
+        let query = supabase
+            .from('adjustments')
+            .select('*, salesperson:users!salesperson_id(full_name)')
+            .order('created_at', { ascending: false });
+
+        const role = (session.role || "").toLowerCase();
+        if (role === "salesperson") {
+            query = query.eq('salesperson_id', session.id);
+        } else if (userId) {
+            query = query.eq('salesperson_id', userId);
+        }
+
+        const { data: rows, error } = await query;
+        if (error) throw error;
+
+        const result = (rows || []).map(r => ({
+            ...r,
+            full_name: r.salesperson?.full_name || 'Unknown'
+        }));
+
+        return NextResponse.json(result);
+    } catch (error: any) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
 
 export async function POST(req: NextRequest) {
-    const session = await getSession();
-    if (!session || !["admin", "manager", "accounts"].includes(session.role)) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    const body = await req.json();
-    const { user_id, amount, reason, type } = body;
-
-    if (!user_id || amount === undefined || !reason || !type) {
-        return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-    }
-
     try {
-        const result = await db.prepare(`
-          INSERT INTO adjustments (salesperson_id, amount, reason, type, status)
-          VALUES (?, ?, ?, ?, 'pending')
-          RETURNING id
-        `).run(user_id, amount, reason, type);
-
-        await db.prepare(
-            "INSERT INTO audit_logs (user_id, action, entity_type, entity_id, new_value) VALUES (?, 'CREATE', 'adjustment', ?, ?)"
-        ).run(session.id, result.lastInsertRowid, JSON.stringify(body));
-
-        // Email notification (non-blocking)
-        try {
-            const staff = await db.prepare("SELECT email, full_name FROM public.users WHERE id = ?").get(user_id) as any;
-            if (staff?.email) {
-                const displayAction = type === 'bonus' ? 'A performance bonus has been applied to your account' : 'A manual adjustment has been applied to your account';
-                await sendIncentiveUpdate(staff.email, staff.full_name, displayAction, parseFloat(amount));
-            }
-        } catch (e) {
-            console.warn("[ADJUSTMENTS] Email notification deferred:", e);
+        const session = await getSession();
+        const role = (session?.role || "").toLowerCase();
+        if (!session || !["admin", "manager", "accounts"].includes(role)) {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
 
-        return NextResponse.json({ id: result.lastInsertRowid, message: "Adjustment successfully recorded" });
-    } catch (err: any) {
-        console.error("[ADJUSTMENT_POST_ERROR]", err.message);
-        return NextResponse.json({ error: err.message }, { status: 400 });
+        const body = await req.json();
+        const { user_id, amount, reason, type } = body;
+
+        if (!user_id || amount === undefined || !reason || !type) {
+            return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+        }
+
+        const supabase = getSupabase();
+        const { data: adj, error: aErr } = await supabase
+            .from('adjustments')
+            .insert({
+                salesperson_id: user_id,
+                amount: parseFloat(amount),
+                reason,
+                type,
+                status: 'pending'
+            })
+            .select('id')
+            .single();
+
+        if (aErr) throw aErr;
+
+        await supabase.from('audit_logs').insert({
+            user_id: session.id,
+            action: 'CREATE',
+            entity_type: 'adjustment',
+            entity_id: adj.id,
+            new_value: JSON.stringify(body)
+        });
+
+        // Notification
+        try {
+            const { data: user } = await supabase.from('users').select('email, full_name').eq('id', user_id).single();
+            if (user?.email) {
+                const displayAction = type === 'bonus' ? 'A performance bonus has been applied to your account' : 'A manual adjustment has been applied to your account';
+                await sendIncentiveUpdate(user.email, user.full_name, displayAction, parseFloat(amount));
+            }
+        } catch (e) { }
+
+        return NextResponse.json({ id: adj.id, message: "Adjustment recorded" });
+    } catch (error: any) {
+        return NextResponse.json({ error: error.message }, { status: 400 });
     }
 }

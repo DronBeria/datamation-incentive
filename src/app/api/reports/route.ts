@@ -1,97 +1,109 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
+import { createClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
 
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } }
+  );
+}
+
 export async function GET(req: NextRequest) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const url = new URL(req.url);
-  const dateFrom = url.searchParams.get("from");
-  const dateTo = url.searchParams.get("to");
+    const url = new URL(req.url);
+    const dateFrom = url.searchParams.get("from");
+    const dateTo = url.searchParams.get("to");
+    const supabase = getSupabase();
 
-  // Date filter conditions for sales
-  const salesConditions: string[] = [];
-  const salesParams: any[] = [];
-  if (dateFrom) { salesConditions.push("sale_date >= ?"); salesParams.push(dateFrom); }
-  if (dateTo) { salesConditions.push("sale_date <= ?"); salesParams.push(`${dateTo} 23:59:59`); }
-  const salesWhere = salesConditions.length ? " WHERE " + salesConditions.join(" AND ") : "";
+    // 1. Fetch Sales Data for Trend & Performers
+    let salesQuery = supabase.from('sales_logs').select('*, user:users(full_name)');
+    if (dateFrom) salesQuery = salesQuery.gte('sale_date', dateFrom);
+    if (dateTo) salesQuery = salesQuery.lte('sale_date', `${dateTo} 23:59:59`);
 
-  // Date filter for batches
-  const batchConditions: string[] = [];
-  const batchParams: any[] = [];
-  if (dateFrom) { batchConditions.push("date(ib.created_at) >= ?"); batchParams.push(dateFrom); }
-  if (dateTo) { batchConditions.push("date(ib.created_at) <= ?"); batchParams.push(dateTo); }
-  const batchWhere = batchConditions.length ? " AND " + batchConditions.join(" AND ") : "";
+    const { data: sales, error: sErr } = await salesQuery;
+    if (sErr) throw sErr;
 
-  // Revenue vs Incentive trend
-  const monthlyRevenue = await db.prepare(`
-    SELECT to_char(sale_date, 'YYYY-MM') as month, 
-      SUM(deal_value) as revenue, 
-      SUM(calculated_commission) as incentives
-    FROM public.sales_logs ${salesWhere} GROUP BY month ORDER BY month
-  `).all(...salesParams);
+    // 2. Fetch Batch Data for Aging & Status Distribution
+    let batchQuery = supabase.from('incentive_batches').select('*');
+    if (dateFrom) batchQuery = batchQuery.gte('created_at', dateFrom);
+    if (dateTo) batchQuery = batchQuery.lte('created_at', `${dateTo} 23:59:59`);
 
-  // Top performers
-  const topPerformers = await db.prepare(`
-    SELECT u.full_name, COUNT(sl.id) as deals, SUM(sl.deal_value) as total_sales, SUM(sl.calculated_commission) as total_incentives
-    FROM public.sales_logs sl JOIN public.users u ON sl.salesperson_id = u.id
-    ${salesWhere ? salesWhere.replace(/sale_date/g, "sl.sale_date") : ""}
-    GROUP BY u.full_name ORDER BY total_sales DESC LIMIT 10
-  `).all(...salesParams);
+    const { data: batches, error: bErr } = await batchQuery;
+    if (bErr) throw bErr;
 
-  // Disbursement aging
-  const aging = await db.prepare(`
-    SELECT ib.id, ib.batch_name, ib.status, ib.total_amount, ib.created_at, ib.approved_at, ib.paid_at,
-    CASE 
-      WHEN ib.status = 'paid' AND ib.approved_at IS NOT NULL THEN (ib.paid_at::date - ib.approved_at::date)
-      WHEN ib.status = 'approved' AND ib.approved_at IS NOT NULL THEN (now()::date - ib.approved_at::date)
-      ELSE (now()::date - ib.created_at::date)
-    END as days_pending
-    FROM public.incentive_batches ib
-    WHERE ib.status IN ('approved', 'pending_approval', 'paid') ${batchWhere}
-    ORDER BY days_pending DESC
-  `).all(...batchParams);
+    // 3. Process Trends (In JS for maximum reliability vs SQL dialects)
+    const trendMap: Record<string, { month: string, revenue: number, incentives: number }> = {};
+    (sales || []).forEach(s => {
+      const month = s.sale_date.substring(0, 7); // YYYY-MM
+      if (!trendMap[month]) trendMap[month] = { month, revenue: 0, incentives: 0 };
+      trendMap[month].revenue += (s.deal_value || 0);
+      trendMap[month].incentives += (s.calculated_commission || 0);
+    });
+    const monthlyRevenue = Object.values(trendMap).sort((a, b) => a.month.localeCompare(b.month));
 
-  // Status distribution
-  const statusConditions: string[] = [];
-  const statusParams: any[] = [];
-  if (dateFrom) { statusConditions.push("date(created_at) >= ?"); statusParams.push(dateFrom); }
-  if (dateTo) { statusConditions.push("date(created_at) <= ?"); statusParams.push(dateTo); }
-  const statusWhere = statusConditions.length ? " WHERE " + statusConditions.join(" AND ") : "";
+    // 4. Process Top Performers
+    const staffMap: Record<string, { full_name: string, deals: number, total_sales: number, total_incentives: number }> = {};
+    (sales || []).forEach(s => {
+      const name = s.user?.full_name || 'Individual';
+      if (!staffMap[name]) staffMap[name] = { full_name: name, deals: 0, total_sales: 0, total_incentives: 0 };
+      staffMap[name].deals += 1;
+      staffMap[name].total_sales += (s.deal_value || 0);
+      staffMap[name].total_incentives += (s.calculated_commission || 0);
+    });
+    const topPerformers = Object.values(staffMap).sort((a, b) => b.total_sales - a.total_sales).slice(0, 10);
 
-  const statusDist = await db.prepare(`
-    SELECT status, COUNT(*) as count, COALESCE(SUM(total_amount),0) as total
-    FROM public.incentive_batches ${statusWhere} GROUP BY status
-  `).all(...statusParams);
+    // 5. Aging & Status
+    const today = new Date();
+    const aging = (batches || [])
+      .filter(b => ['approved', 'pending_approval', 'paid'].includes(b.status))
+      .map(b => {
+        const start = b.approved_at ? new Date(b.approved_at) : new Date(b.created_at);
+        const end = b.paid_at ? new Date(b.paid_at) : today;
+        const days = Math.floor((end.getTime() - start.getTime()) / (1000 * 3600 * 24));
+        return { ...b, days_pending: days };
+      })
+      .sort((a, b) => b.days_pending - a.days_pending);
 
-  // Forecasting: Simple run-rate projection for the current month
-  const now = new Date();
-  const dayOfMonth = Math.max(1, now.getDate());
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const statusMap: Record<string, { status: string, count: number, total: number }> = {};
+    (batches || []).forEach(b => {
+      if (!statusMap[b.status]) statusMap[b.status] = { status: b.status, count: 0, total: 0 };
+      statusMap[b.status].count += 1;
+      statusMap[b.status].total += (b.total_amount || 0);
+    });
+    const statusDist = Object.values(statusMap);
 
-  const currentMonthSalesResult = await db.prepare(`
-    SELECT COALESCE(SUM(deal_value),0) as s FROM public.sales_logs 
-    WHERE to_char(sale_date, 'MM') = ? AND to_char(sale_date, 'YYYY') = ?
-  `).get(
-    (now.getMonth() + 1).toString().padStart(2, '0'),
-    now.getFullYear().toString()
-  ) as any;
-  const currentMonthSales = currentMonthSalesResult?.s || 0;
+    // 6. Forecasting
+    const now = new Date();
+    const dayOfMonth = Math.max(1, now.getDate());
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const curMonthKey = now.toISOString().substring(0, 7);
+    const currentMonthSales = (sales || [])
+      .filter(s => s.sale_date.startsWith(curMonthKey))
+      .reduce((sum, s) => sum + (s.deal_value || 0), 0);
 
-  const forecastRevenue = Math.round((currentMonthSales / dayOfMonth) * daysInMonth);
+    const projectedEOM = Math.round((currentMonthSales / dayOfMonth) * daysInMonth);
 
-  return NextResponse.json({
-    monthlyRevenue,
-    topPerformers,
-    aging,
-    statusDist,
-    forecast: {
-      currentMonth: currentMonthSales,
-      projectedEOM: forecastRevenue,
-      confidence: dayOfMonth > 20 ? "High" : "Medium"
-    }
-  });
+    return NextResponse.json({
+      monthlyRevenue,
+      topPerformers,
+      aging,
+      statusDist,
+      forecast: {
+        currentMonth: currentMonthSales,
+        projectedEOM,
+        confidence: dayOfMonth > 20 ? "High" : "Medium"
+      }
+    });
+
+  } catch (error: any) {
+    console.error("[REPORTS_GET_ERROR]", error.message);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 }
