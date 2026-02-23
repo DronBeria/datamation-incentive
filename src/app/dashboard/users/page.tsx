@@ -117,9 +117,9 @@ export default function UsersPage() {
     setModalMode("edit");
     setForm({
       id: u.id, email: u.email, password: "", full_name: u.full_name,
-      role_id: ROLE_IDS[u.role] || "4",
+      role_id: String(u.role_id || ROLE_IDS[u.role] || "4"),
       department: u.department || "",
-      scheme_id: schemes.find(s => s.name === u.scheme_name)?.id?.toString() || "",
+      scheme_id: u.scheme_id?.toString() || "",
       manager_id: u.manager_id?.toString() || "none",
       is_active: !!u.is_active,
       approval_status: u.approval_status || "approved"
@@ -138,10 +138,10 @@ export default function UsersPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
-          id: form.id ? parseInt(form.id.toString()) : null,
-          role_id: parseInt(form.role_id),
-          scheme_id: (form.scheme_id && form.scheme_id !== 'none') ? parseInt(form.scheme_id) : null,
-          manager_id: (form.manager_id && form.manager_id !== 'none') ? parseInt(form.manager_id) : null
+          id: form.id ? String(form.id) : null,
+          role_id: form.role_id,
+          scheme_id: (form.scheme_id && form.scheme_id !== 'none') ? form.scheme_id : null,
+          manager_id: (form.manager_id && form.manager_id !== 'none') ? form.manager_id : null
         }),
       });
       if (res.ok) {
@@ -157,14 +157,9 @@ export default function UsersPage() {
     if (!u) return;
 
     // Quick validation before API call
-    if (action === 'approved' && u.role === 'salesperson' && !u.scheme_name) {
-      toast.error("Salesperson must have a scheme assigned. Please use 'Edit Profile' to approve.", {
-        duration: 5000,
-        action: {
-          label: "Edit",
-          onClick: () => openEdit(u)
-        }
-      });
+    if (action === 'approved' && u.role === 'salesperson' && !u.scheme_id) {
+      toast.error("Salesperson must have a scheme assigned. Opening editor...", { duration: 3000 });
+      openEdit(u);
       return;
     }
 
@@ -174,7 +169,10 @@ export default function UsersPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...u,
-          role_id: ROLE_IDS[u.role] || "4",
+          id: u.id,
+          role_id: u.role_id || "4",
+          scheme_id: u.scheme_id,
+          manager_id: u.manager_id,
           approval_status: action,
           is_active: action === 'approved'
         }),

@@ -1,53 +1,73 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
+import { createClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
 
+function getSupabase() {
+    return createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        { auth: { persistSession: false } }
+    );
+}
+
 export async function GET() {
     const session = await getSession();
-    if (!session || !["admin", "manager"].includes(session.role)) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const role = (session.role || "").toLowerCase().trim();
+    if (!["admin", "manager", "accounts"].includes(role)) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const schemes = await db.prepare("SELECT * FROM incentive_schemes ORDER BY name ASC").all();
+    const supabase = getSupabase();
+    const { data: schemes, error } = await supabase
+        .from('incentive_schemes')
+        .select('*')
+        .order('name', { ascending: true });
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json(schemes);
 }
 
 export async function POST(req: NextRequest) {
     const session = await getSession();
-    if (!session || !["admin", "manager"].includes(session.role)) {
+    const role = (session?.role || "").toLowerCase().trim();
+    if (!session || !["admin", "manager"].includes(role)) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const body = await req.json();
-    const { name, description, calculation_type, base_rate, target_threshold, bonus_rate } = body;
+    const { name, calculation_type, base_rate, target_threshold, bonus_rate, description } = body;
 
     if (!name || !calculation_type) {
         return NextResponse.json({ error: "Name and calculation type are required" }, { status: 400 });
     }
 
-    try {
-        const result = await db.prepare(`
-          INSERT INTO incentive_schemes 
-          (name, description, calculation_type, base_rate, target_threshold, bonus_rate)
-          VALUES (?, ?, ?, ?, ?, ?)
-          RETURNING id
-        `).run(
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+        .from('incentive_schemes')
+        .insert({
             name,
-            description || "",
+            description: description || "",
             calculation_type,
-            base_rate || 0,
-            target_threshold || 0,
-            bonus_rate || 0
-        );
+            base_rate: base_rate || 0,
+            target_threshold: target_threshold || 0,
+            bonus_rate: bonus_rate || 0
+        })
+        .select('id')
+        .single();
 
-        await db.prepare(
-            "INSERT INTO audit_logs (user_id, action, entity_type, entity_id, new_value) VALUES (?, 'CREATE', 'incentive_scheme', ?, ?)"
-        ).run(session.id, result.lastInsertRowid, JSON.stringify(body));
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
-        return NextResponse.json({ id: result.lastInsertRowid, message: "Commission scheme blueprint successfully indexed" });
-    } catch (err: any) {
-        return NextResponse.json({ error: err.message }, { status: 400 });
-    }
+    await supabase.from('audit_logs').insert({
+        user_id: session.id,
+        action: 'CREATE',
+        entity_type: 'incentive_scheme',
+        entity_id: data.id,
+        new_value: JSON.stringify(body)
+    });
+
+    return NextResponse.json({ id: data.id, message: "Scheme created" });
 }
