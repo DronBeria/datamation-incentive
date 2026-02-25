@@ -6,10 +6,11 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
     const envCheck = {
-        RESEND_API_KEY: !!process.env.RESEND_API_KEY,
+        SMTP_USER: !!process.env.SMTP_USER,
+        SMTP_PASS: !!process.env.SMTP_PASS,
+        SMTP_HOST: !!process.env.SMTP_HOST,
         SMTP_FROM: !!process.env.SMTP_FROM,
         NEXT_PUBLIC_APP_URL: !!process.env.NEXT_PUBLIC_APP_URL,
-        DATABASE_URL: !!process.env.DATABASE_URL,
     };
 
     try {
@@ -17,13 +18,13 @@ export async function GET(req: NextRequest) {
         const admins = await db.prepare("SELECT id, email, is_active FROM users WHERE role_id = 1").all() as any[];
         const activeAdmins = admins.filter((a: any) => a.is_active);
 
-        const targetTo = req.nextUrl.searchParams.get("to") || "delivered@resend.dev";
+        const targetTo = req.nextUrl.searchParams.get("to") || "vibhaberia@gmail.com";
 
-        // Send test email via Resend
+        // Send test email via SMTP
         const result = await sendMail({
             to: targetTo,
-            subject: `PayoutPower Email Probe: ${new Date().toLocaleTimeString()}`,
-            html: `<h3>Email System Verified</h3><p>Provider: Resend API</p><p>Target: ${targetTo}</p><p>Timestamp: ${new Date().toISOString()}</p>`,
+            subject: `PayoutPower SMTP Probe: ${new Date().toLocaleTimeString()}`,
+            html: `<h3>Email System Verified</h3><p>Provider: SMTP (Gmail)</p><p>Target: ${targetTo}</p><p>Timestamp: ${new Date().toISOString()}</p>`,
         });
 
         return NextResponse.json({
@@ -31,7 +32,7 @@ export async function GET(req: NextRequest) {
             status: result.success ? "DISPATCHED" : "FAILED",
             messageId: result.messageId || null,
             error: result.error || null,
-            provider: "Resend",
+            provider: "SMTP",
             admins: {
                 total: admins.length,
                 active: activeAdmins.length,
