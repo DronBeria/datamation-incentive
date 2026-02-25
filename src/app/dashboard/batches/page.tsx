@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/lib/auth-context";
 import { useEffect, useState, useCallback, useMemo, Suspense } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -126,7 +127,29 @@ function CalendarView({ batches, onBatchClick }: { batches: any[]; onBatchClick:
 
 // ── Batch detail modal ─────────────────────────────────────────────
 function BatchDetailModal({ batch, onClose, user, onAction, actionLoading }: any) {
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [batch?.id]);
+
   if (!batch) return null;
+
+  const isApproved = batch.status === "approved";
+  const canPay = (user?.role === "accounts" || user?.role === "admin");
+  const showCheckboxes = isApproved && canPay;
+
+  const toggleItem = (id: number) => {
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedIds(next);
+  };
+
+  const toggleAll = () => {
+    if (selectedIds.size === batch.items.length) setSelectedIds(new Set());
+    else setSelectedIds(new Set(batch.items.map((i: any) => i.id)));
+  };
   const cfg = STATUS_CONFIG[batch.status];
   return (
     <Dialog open={!!batch} onOpenChange={onClose}>
@@ -166,11 +189,30 @@ function BatchDetailModal({ batch, onClose, user, onAction, actionLoading }: any
           </Card>
 
           <div className="space-y-4">
-            <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest ml-1">Entries</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest ml-1">Entries</h3>
+              {showCheckboxes && (
+                <button onClick={toggleAll} className="text-[10px] font-bold text-blue-600 uppercase tracking-widest hover:underline px-2">
+                  {selectedIds.size === batch.items?.length ? "Deselect All" : "Select All"}
+                </button>
+              )}
+            </div>
             <div className="space-y-2 max-h-[240px] overflow-y-auto pr-2">
               {batch.items?.map((item: any) => (
-                <div key={item.id} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-xl hover:border-blue-100 transition-colors">
-                  <div className="min-w-0">
+                <div
+                  key={item.id}
+                  onClick={() => showCheckboxes && toggleItem(item.id)}
+                  className={`flex items-center gap-4 p-4 bg-white border rounded-xl transition-all ${showCheckboxes ? 'cursor-pointer' : ''} ${selectedIds.has(item.id) ? 'border-blue-600 bg-blue-50/30' : 'border-slate-100 hover:border-blue-100'}`}
+                >
+                  {showCheckboxes && (
+                    <Checkbox
+                      checked={selectedIds.has(item.id)}
+                      onCheckedChange={() => toggleItem(item.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="border-slate-300 data-[state=checked]:bg-blue-600"
+                    />
+                  )}
+                  <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-slate-900 tracking-tight">{item.salesperson_name}</p>
                     <p className="text-[10px] font-medium text-slate-400 truncate mt-0.5">{item.client_name || item.description}</p>
                   </div>
@@ -226,9 +268,23 @@ function BatchDetailModal({ batch, onClose, user, onAction, actionLoading }: any
                 </Button>
               </>
             )}
-            {batch.status === "approved" && (user?.role === "accounts" || user?.role === "admin") && (
-              <Button onClick={() => onAction(batch.id, "mark_paid")} disabled={actionLoading === batch.id} className="flex-1 h-11 bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-sm font-bold text-sm">
-                {actionLoading === batch.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Mark as Paid"}
+            {isApproved && canPay && (
+              <Button
+                onClick={() => onAction(batch.id, "pay_selected", null, { selectedItemIds: Array.from(selectedIds) })}
+                disabled={actionLoading === batch.id || selectedIds.size === 0}
+                className="flex-1 h-11 bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-sm font-bold text-sm flex items-center justify-center gap-2"
+              >
+                {actionLoading === batch.id ? <Loader2 className="h-4 w-4 animate-spin" /> : (
+                  <>
+                    <Zap className="h-4 w-4" />
+                    Pay {selectedIds.size} Selected
+                  </>
+                )}
+              </Button>
+            )}
+            {batch.status === "approved" && user?.role === "admin" && selectedIds.size === 0 && (
+              <Button onClick={() => onAction(batch.id, "mark_paid")} disabled={actionLoading === batch.id} className="flex-1 h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-sm font-bold text-sm">
+                {actionLoading === batch.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Mark Entire Batch Paid"}
               </Button>
             )}
             <Button variant="ghost" onClick={onClose} className="h-11 rounded-xl font-semibold text-slate-500 text-xs px-6">Close</Button>
@@ -296,16 +352,16 @@ function BatchesContent() {
     }
   }, [showCreate]);
 
-  const handleAction = async (batchId: number, action: string, rejection_reason?: string) => {
+  const handleAction = async (batchId: number, action: string, rejection_reason?: string, extra?: any) => {
     setActionLoading(batchId);
     try {
       const res = await fetch(`/api/batches/${batchId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, rejection_reason })
+        body: JSON.stringify({ action, rejection_reason, ...extra })
       });
       if (res.ok) {
-        toast.success("Batch lifecycle successfully updated");
+        toast.success(action === 'pay_selected' ? "Payment execution batch created" : "Batch lifecycle successfully updated");
         fetchBatches();
         setSelectedBatch(null);
       }
