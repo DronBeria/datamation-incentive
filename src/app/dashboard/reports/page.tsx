@@ -13,7 +13,8 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { downloadCSV, downloadPDF } from "@/lib/export-utils";
+import { downloadCSV, exportToExcel, exportToPDF, downloadPDF } from "@/lib/export-utils";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const PALETTE = ["#2563eb", "#6366f1", "#06b6d4", "#10b981", "#f59e0b", "#f43f5e"];
 
@@ -46,6 +47,21 @@ export default function ReportsPage() {
   const handleExportCSV = () => {
     if (!data) return;
     downloadCSV(data.topPerformers.map((p: any) => ({
+      name: p.full_name,
+      deals: p.deals,
+      total_sales: p.total_sales,
+      total_incentives: p.total_incentives,
+    })), "performance_analytics", [
+      { key: "name", label: "Name" },
+      { key: "deals", label: "Deals" },
+      { key: "total_sales", label: "Gross Sales (₹)" },
+      { key: "total_incentives", label: "Total Commissions (₹)" },
+    ]);
+  };
+
+  const handleExportExcel = () => {
+    if (!data) return;
+    exportToExcel(data.topPerformers.map((p: any) => ({
       name: p.full_name,
       deals: p.deals,
       total_sales: p.total_sales,
@@ -124,12 +140,24 @@ export default function ReportsPage() {
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <DateRangePicker value={dateRange} onChange={setDateRange} />
-          <Button onClick={handleExportCSV} variant="outline" className="h-10 px-4 rounded-xl font-semibold text-xs border-slate-200 bg-white text-slate-600 hover:bg-slate-50 shadow-sm">
-            <Download className="h-4 w-4 mr-2" /> CSV
-          </Button>
-          <Button onClick={handleExportPDF} variant="outline" className="h-10 px-4 rounded-xl font-semibold text-xs border-slate-200 bg-white text-slate-600 hover:bg-slate-50 shadow-sm">
-            <FileText className="h-4 w-4 mr-2" /> PDF
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="h-10 px-4 rounded-xl font-semibold text-xs border-slate-200 bg-white text-slate-600 hover:bg-slate-50 shadow-sm">
+                <Download className="h-4 w-4 mr-2" /> Export Reports
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 p-1 rounded-xl shadow-lg border border-slate-100 bg-white">
+              <DropdownMenuItem onClick={handleExportCSV} className="h-10 rounded-lg text-xs font-medium text-slate-600 cursor-pointer focus:bg-slate-50">
+                Performance CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportExcel} className="h-10 rounded-lg text-xs font-medium text-slate-600 cursor-pointer focus:bg-slate-50">
+                Performance Excel
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportPDF} className="h-10 rounded-lg text-xs font-medium text-slate-600 cursor-pointer focus:bg-slate-50">
+                Full Analytics PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 

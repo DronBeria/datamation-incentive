@@ -25,7 +25,7 @@ import {
   Mail, MapPin, Building2, ChevronRight, ArrowRight,
   Activity, Clock, Target, TrendingUp
 } from "lucide-react";
-import { downloadCSV } from "@/lib/export-utils";
+import { downloadCSV, exportToExcel, exportToPDF } from "@/lib/export-utils";
 
 const ROLE_CONFIG: Record<string, { label: string; class: string; dot: string }> = {
   admin: { label: "Admin", class: "bg-blue-50 text-blue-600 border-none", dot: "bg-blue-400" },
@@ -283,9 +283,19 @@ export default function UsersPage() {
     return { total: totalCount, active: activeCount, salesperson: salesCount, pending: pendingCount };
   }, [users]);
 
-  const handleExport = () => {
+  const handleExportCSV = () => {
     if (!filtered.length) return toast.error("No data available");
     downloadCSV(filtered.map(u => ({ ...u, is_active: u.is_active ? "Yes" : "No" })), "team_directory", USERS_CSV_COLUMNS);
+  };
+
+  const handleExportExcel = () => {
+    if (!filtered.length) return toast.error("No data available");
+    exportToExcel(filtered.map(u => ({ ...u, is_active: u.is_active ? "Yes" : "No" })), "team_directory", USERS_CSV_COLUMNS);
+  };
+
+  const handleExportPDF = () => {
+    if (!filtered.length) return toast.error("No data available");
+    exportToPDF("Team Directory", USERS_CSV_COLUMNS, filtered.map(u => ({ ...u, is_active: u.is_active ? "Yes" : "No" })), "team_directory");
   };
 
   return (
@@ -297,9 +307,24 @@ export default function UsersPage() {
           <p className="text-sm text-slate-500 mt-1">Manage user access, roles and associated incentive schemes.</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button onClick={handleExport} variant="outline" className="h-10 px-4 rounded-xl text-xs font-semibold text-slate-600 border-slate-200">
-            <Download className="h-3.5 w-3.5 mr-2" /> Export
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="h-10 px-4 rounded-xl text-xs font-semibold text-slate-600 border-slate-200">
+                <Download className="h-3.5 w-3.5 mr-2" /> Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40 p-1 rounded-xl shadow-lg border border-slate-100 bg-white">
+              <DropdownMenuItem onClick={handleExportCSV} className="h-10 rounded-lg text-xs font-medium text-slate-600 flex items-center gap-2 cursor-pointer focus:bg-slate-50">
+                CSV Document
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportExcel} className="h-10 rounded-lg text-xs font-medium text-slate-600 flex items-center gap-2 cursor-pointer focus:bg-slate-50">
+                Excel Spreadsheet
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportPDF} className="h-10 rounded-lg text-xs font-medium text-slate-600 flex items-center gap-2 cursor-pointer focus:bg-slate-50">
+                PDF Document
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button onClick={openCreate} className="bg-blue-600 hover:bg-blue-700 h-10 px-4 font-semibold text-white text-xs rounded-xl shadow-sm transition-all flex items-center gap-2">
             <Plus className="h-4 w-4" /> Add Member
           </Button>

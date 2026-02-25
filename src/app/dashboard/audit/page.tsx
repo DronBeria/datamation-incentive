@@ -12,7 +12,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Loader2, Activity, Search, Download, Clock, User, Target, Layers, ArrowRight, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
-import { downloadCSV } from "@/lib/export-utils";
+import { downloadCSV, exportToExcel, exportToPDF } from "@/lib/export-utils";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 
 const ACTION_CONFIG: Record<string, { dot: string; label: string; bg: string }> = {
@@ -79,7 +80,7 @@ export default function AuditPage() {
 
   const actions = useMemo(() => [...new Set(logs.map(l => l.action).filter(Boolean))], [logs]);
 
-  const handleExport = () => {
+  const handleExportCSV = () => {
     if (!filtered.length) return toast.error("No stream events to export");
     downloadCSV(filtered.map(l => ({
       timestamp: new Date(l.created_at).toLocaleString(),
@@ -92,6 +93,32 @@ export default function AuditPage() {
     })), "system_audit_trail", AUDIT_CSV_COLUMNS);
   };
 
+  const handleExportExcel = () => {
+    if (!filtered.length) return toast.error("No stream events to export");
+    exportToExcel(filtered.map(l => ({
+      timestamp: new Date(l.created_at).toLocaleString(),
+      actor: l.full_name || "System",
+      action: l.action,
+      entity: l.entity_type?.replace(/_/g, " "),
+      entity_id: l.entity_id,
+      old_value: l.old_value || "—",
+      new_value: l.new_value || "—",
+    })), "system_audit_trail", AUDIT_CSV_COLUMNS);
+  };
+
+  const handleExportPDF = () => {
+    if (!filtered.length) return toast.error("No stream events to export");
+    exportToPDF("System Audit Trail Report", AUDIT_CSV_COLUMNS, filtered.map(l => ({
+      timestamp: new Date(l.created_at).toLocaleString(),
+      actor: l.full_name || "System",
+      action: l.action,
+      entity: l.entity_type?.replace(/_/g, " "),
+      entity_id: l.entity_id,
+      old_value: l.old_value || "—",
+      new_value: l.new_value || "—",
+    })), "audit_ledger");
+  };
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -101,9 +128,24 @@ export default function AuditPage() {
           <p className="text-sm text-slate-500 mt-1">A detailed timeline of all actions and changes within the system.</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button onClick={handleExport} variant="outline" className="h-10 px-4 rounded-xl text-xs font-semibold text-slate-600 border-slate-200">
-            <Download className="h-3.5 w-3.5 mr-2" /> Export Logs
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="h-10 px-4 rounded-xl text-xs font-semibold text-slate-600 border-slate-200 bg-white">
+                <Download className="h-3.5 w-3.5 mr-2" /> Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40 p-1 rounded-xl shadow-lg border border-slate-100 bg-white">
+              <DropdownMenuItem onClick={handleExportCSV} className="h-10 rounded-lg text-xs font-medium text-slate-600 cursor-pointer focus:bg-slate-50">
+                CSV Document
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportExcel} className="h-10 rounded-lg text-xs font-medium text-slate-600 cursor-pointer focus:bg-slate-50">
+                Excel Spreadsheet
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportPDF} className="h-10 rounded-lg text-xs font-medium text-slate-600 cursor-pointer focus:bg-slate-50">
+                PDF Document
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <div className="flex items-center gap-2.5 px-3.5 h-10 rounded-xl bg-slate-900 shadow-sm">
             <Activity className="h-3.5 w-3.5 text-blue-400" />
             <span className="text-xs font-semibold text-white tracking-wide">{logs.length} Total Events</span>

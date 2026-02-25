@@ -1,3 +1,8 @@
+import { saveAs } from 'file-saver';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
 export function downloadCSV(data: Record<string, any>[], filename: string, columns?: { key: string; label: string }[]) {
   if (!data.length) return;
 
@@ -24,6 +29,65 @@ export function downloadCSV(data: Record<string, any>[], filename: string, colum
   URL.revokeObjectURL(url);
 }
 
+export function exportToExcel(data: Record<string, any>[], filename: string, columns?: { key: string; label: string }[]) {
+  if (!data.length) return;
+
+  const cols = columns || Object.keys(data[0]).map((k) => ({ key: k, label: k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) }));
+
+  const excelData = data.map(row => {
+    const newRow: Record<string, any> = {};
+    cols.forEach(col => {
+      newRow[col.label] = row[col.key];
+    });
+    return newRow;
+  });
+
+  const worksheet = XLSX.utils.json_to_sheet(excelData);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+
+  const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+  const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8' });
+
+  const fullFilename = `${filename}_${new Date().toISOString().split("T")[0]}.xlsx`;
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fullFilename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+export function exportToPDF(title: string, columns: { key: string; label: string }[], data: Record<string, any>[], filename: string) {
+  const doc = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  doc.text(title, 14, 15);
+  doc.setFontSize(10);
+  doc.text(`Generated on ${new Date().toLocaleString()}`, 14, 22);
+
+  const head = [columns.map(c => c.label)];
+  const body = data.map(row => columns.map(c => row[c.key] ?? "-"));
+
+  autoTable(doc, {
+    head: head,
+    body: body,
+    startY: 30,
+    theme: 'grid',
+    styles: { fontSize: 8, cellPadding: 2 },
+    headStyles: { fillColor: [71, 85, 105], textColor: 255 },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+  });
+
+  doc.save(`${filename}_${new Date().toISOString().split("T")[0]}.pdf`);
+}
+
+/** Legacy HTML-based print/PDF function */
 export function downloadPDF(title: string, tables: { heading: string; columns: { key: string; label: string }[]; data: Record<string, any>[] }[]) {
   // Generate printable HTML and open in new window for native PDF printing
   const styles = `

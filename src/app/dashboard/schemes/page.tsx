@@ -12,8 +12,10 @@ import { toast } from "sonner";
 import {
     Plus, Loader2, Zap, Target, TrendingUp,
     Percent, Hash, Box, Layers, ArrowRight,
-    CheckCircle2, Calculator, Sparkles, Edit2, Trash2
+    CheckCircle2, Calculator, Sparkles, Edit2, Trash2, Download
 } from "lucide-react";
+import { exportToExcel, exportToPDF } from "@/lib/export-utils";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 // ── Scheme type definitions ──────────────────────────────────────────
 const SCHEME_TYPES = [
@@ -180,6 +182,38 @@ export default function SchemesPage() {
     const isPercent = ["percentage", "tier_based"].includes(form.calculation_type);
     const hasTier = ["tier_based", "quantity_threshold"].includes(form.calculation_type);
 
+    const handleExportExcel = () => {
+        if (!schemes.length) return toast.error("No data available");
+        exportToExcel(schemes.map(s => ({
+            ...s,
+            base_rate: ["fixed_per_qty", "quantity_threshold"].includes(s.calculation_type) ? s.base_rate : `${(s.base_rate * 100).toFixed(1)}%`,
+            bonus_rate: s.bonus_rate > 0 ? (s.calculation_type === "tier_based" ? `${(s.bonus_rate * 100).toFixed(1)}%` : s.bonus_rate) : "N/A"
+        })), "incentive_schemes", [
+            { key: "name", label: "Scheme Name" },
+            { key: "calculation_type", label: "Type" },
+            { key: "base_rate", label: "Base Rate" },
+            { key: "target_threshold", label: "Threshold" },
+            { key: "bonus_rate", label: "Bonus Rate" },
+            { key: "max_payable", label: "Max Payout" },
+        ]);
+    };
+
+    const handleExportPDF = () => {
+        if (!schemes.length) return toast.error("No data available");
+        exportToPDF("Incentive Schemes Blueprint", [
+            { key: "name", label: "Scheme Name" },
+            { key: "calculation_type", label: "Type" },
+            { key: "base_rate", label: "Base Rate" },
+            { key: "target_threshold", label: "Threshold" },
+            { key: "bonus_rate", label: "Bonus" },
+        ], schemes.map(s => ({
+            ...s,
+            base_rate: ["fixed_per_qty", "quantity_threshold"].includes(s.calculation_type) ? `₹${s.base_rate}` : `${(s.base_rate * 100).toFixed(1)}%`,
+            calculation_type: s.calculation_type.replace(/_/g, " ").toUpperCase(),
+            bonus_rate: s.bonus_rate > 0 ? (s.calculation_type === "tier_based" ? `${(s.bonus_rate * 100).toFixed(1)}%` : `₹${s.bonus_rate}`) : "-"
+        })), "schemes_catalog");
+    };
+
     const stats = useMemo(() => ([
         { label: "Active Schemes", value: `${schemes.length}`, icon: Target, color: "text-blue-600", bg: "bg-blue-50" },
         { label: "Tiered Rules", value: `${schemes.filter(s => s.calculation_type !== "percentage").length}`, icon: Layers, color: "text-indigo-600", bg: "bg-indigo-50" },
@@ -217,12 +251,29 @@ export default function SchemesPage() {
                     <h1 className="text-2xl font-heading text-slate-900 tracking-tight">Commission Schemes</h1>
                     <p className="text-sm text-slate-500 mt-1">Configure automated rules for commission calculations</p>
                 </div>
-                <Button
-                    onClick={() => { resetForm(); setModalMode("create"); setShowCreate(true); }}
-                    className="bg-blue-600 hover:bg-blue-500 h-10 px-5 font-bold text-xs uppercase tracking-widest text-white rounded-xl shadow-sm transition-all flex items-center gap-2 active:scale-95"
-                >
-                    <Plus className="h-4 w-4" /> New Scheme
-                </Button>
+                <div className="flex items-center gap-3">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="h-10 px-4 rounded-xl text-xs font-semibold text-slate-600 border-slate-200 bg-white">
+                                <Download className="h-3.5 w-3.5 mr-2" /> Export
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-40 p-1 rounded-xl shadow-lg border border-slate-100 bg-white">
+                            <DropdownMenuItem onClick={handleExportExcel} className="h-10 rounded-lg text-xs font-medium text-slate-600 cursor-pointer focus:bg-slate-50">
+                                Excel Spreadsheet
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={handleExportPDF} className="h-10 rounded-lg text-xs font-medium text-slate-600 cursor-pointer focus:bg-slate-50">
+                                PDF Document
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    <Button
+                        onClick={() => { resetForm(); setModalMode("create"); setShowCreate(true); }}
+                        className="bg-blue-600 hover:bg-blue-500 h-10 px-5 font-bold text-xs uppercase tracking-widest text-white rounded-xl shadow-sm transition-all flex items-center gap-2 active:scale-95"
+                    >
+                        <Plus className="h-4 w-4" /> New Scheme
+                    </Button>
+                </div>
             </div>
 
             {/* KPI Stats */}

@@ -16,7 +16,8 @@ import {
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import { Plus, Loader2, ArrowDownCircle, ArrowUpCircle, Search, Download, Sliders, TrendingDown, TrendingUp, Minus, Sparkles, User, ArrowRight, Wallet, History } from "lucide-react";
-import { downloadCSV } from "@/lib/export-utils";
+import { downloadCSV, exportToExcel, exportToPDF } from "@/lib/export-utils";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const TYPE_CONFIG: Record<string, { label: string; icon: React.ElementType; amountClass: string; bg: string; dot: string; sign: string }> = {
     clawback: { label: "Clawback", icon: ArrowDownCircle, amountClass: "text-red-600", bg: "bg-red-50 text-red-600", dot: "bg-red-500", sign: "−" },
@@ -111,13 +112,31 @@ export default function AdjustmentsPage() {
         net: adjustments.reduce((s, a) => s + (a.type === "clawback" ? -a.amount : a.amount), 0),
     }), [adjustments]);
 
-    const handleExport = () => {
+    const handleExportCSV = () => {
         if (!filtered.length) return toast.error("No records available");
         downloadCSV(filtered.map(a => ({
             ...a,
             amount: `${TYPE_CONFIG[a.type]?.sign || ""}₹${Math.abs(a.amount).toLocaleString("en-IN")}`,
             created_at: new Date(a.created_at).toLocaleDateString(),
         })), "financial_adjustments", ADJ_CSV_COLUMNS);
+    };
+
+    const handleExportExcel = () => {
+        if (!filtered.length) return toast.error("No records available");
+        exportToExcel(filtered.map(a => ({
+            ...a,
+            amount: `${TYPE_CONFIG[a.type]?.sign || ""}₹${Math.abs(a.amount).toLocaleString("en-IN")}`,
+            created_at: new Date(a.created_at).toLocaleDateString(),
+        })), "financial_adjustments", ADJ_CSV_COLUMNS);
+    };
+
+    const handleExportPDF = () => {
+        if (!filtered.length) return toast.error("No records available");
+        exportToPDF("Financial Adjustments Report", ADJ_CSV_COLUMNS, filtered.map(a => ({
+            ...a,
+            amount: `${TYPE_CONFIG[a.type]?.sign || ""}₹${Math.abs(a.amount).toLocaleString("en-IN")}`,
+            created_at: new Date(a.created_at).toLocaleDateString(),
+        })), "adjustments_ledger");
     };
 
     return (
@@ -129,9 +148,24 @@ export default function AdjustmentsPage() {
                     <p className="text-sm text-slate-500 mt-1">Manage manual commission corrections and performance bonuses.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <Button onClick={handleExport} variant="outline" className="h-10 px-4 rounded-xl text-xs font-semibold text-slate-600 border-slate-200">
-                        <Download className="h-3.5 w-3.5 mr-2" /> Export CSV
-                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="h-10 px-4 rounded-xl text-xs font-semibold text-slate-600 border-slate-200 bg-white">
+                                <Download className="h-3.5 w-3.5 mr-2" /> Export
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-40 p-1 rounded-xl shadow-lg border border-slate-100 bg-white">
+                            <DropdownMenuItem onClick={handleExportCSV} className="h-10 rounded-lg text-xs font-medium text-slate-600 cursor-pointer focus:bg-slate-50">
+                                CSV Document
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={handleExportExcel} className="h-10 rounded-lg text-xs font-medium text-slate-600 cursor-pointer focus:bg-slate-50">
+                                Excel Spreadsheet
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={handleExportPDF} className="h-10 rounded-lg text-xs font-medium text-slate-600 cursor-pointer focus:bg-slate-50">
+                                PDF Document
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                     <Button onClick={() => setShowCreate(true)} className="bg-blue-600 hover:bg-blue-500 h-10 px-5 font-semibold text-xs text-white rounded-xl shadow-sm transition-all flex items-center gap-2">
                         <Plus className="h-4 w-4" /> New Adjustment
                     </Button>

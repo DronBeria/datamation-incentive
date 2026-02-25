@@ -26,7 +26,8 @@ import {
 } from "lucide-react";
 import { syncToLocal } from "@/lib/hybrid-sync";
 import { DateRangePicker } from "@/components/date-range-picker";
-import { downloadCSV, downloadPDF } from "@/lib/export-utils";
+import { downloadCSV, exportToExcel, exportToPDF, downloadPDF } from "@/lib/export-utils";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 // ── Status config ─────────────────────────────────────────────────
 const STATUS_CONFIG: Record<string, { label: string; class: string; dot: string }> = {
@@ -180,17 +181,33 @@ function BatchDetailModal({ batch, onClose, user, onAction, actionLoading }: any
           </div>
 
           <div className="flex gap-3 pt-2">
-            <Button variant="outline" onClick={() => downloadPDF(`Batch Report: ${batch.batch_name}`, [{
-              heading: "Batch Details",
-              columns: [
-                { key: "salesperson_name", label: "Beneficiary" },
-                { key: "client_name", label: "Client" },
-                { key: "amount", label: "Amount" },
-              ],
-              data: batch.items || [],
-            }])} className="h-11 rounded-xl font-semibold text-slate-600 text-xs border-slate-200">
-              <Download className="h-3.5 w-3.5 mr-2" /> Print PDF
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="h-11 rounded-xl font-semibold text-slate-600 text-xs border-slate-200">
+                  <Download className="h-3.5 w-3.5 mr-2" /> Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-40 p-1 rounded-xl shadow-lg border border-slate-100 bg-white">
+                <DropdownMenuItem onClick={() => exportToExcel(batch.items || [], `batch_${batch.id}`, [
+                  { key: "salesperson_name", label: "Beneficiary" },
+                  { key: "client_name", label: "Client" },
+                  { key: "amount", label: "Amount" },
+                ])} className="h-10 rounded-lg text-xs font-medium text-slate-600 cursor-pointer focus:bg-slate-50">
+                  Excel Spreadsheet
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => downloadPDF(`Batch Report: ${batch.batch_name}`, [{
+                  heading: "Batch Details",
+                  columns: [
+                    { key: "salesperson_name", label: "Beneficiary" },
+                    { key: "client_name", label: "Client" },
+                    { key: "amount", label: "Amount" },
+                  ],
+                  data: batch.items || [],
+                }])} className="h-10 rounded-lg text-xs font-medium text-slate-600 cursor-pointer focus:bg-slate-50">
+                  PDF Document
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             {batch.status === "draft" && (
               <Button onClick={() => onAction(batch.id, "submit")} disabled={actionLoading === batch.id} className="flex-1 h-11 bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-sm font-bold text-sm">
                 {actionLoading === batch.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit for Approval"}
@@ -338,6 +355,21 @@ function BatchesContent() {
     activeValue: batches.filter(b => b.status !== "paid").reduce((s, b) => s + b.total_amount, 0),
   }), [batches]);
 
+  const handleExportCSV = () => {
+    if (!filtered.length) return toast.error("No data available");
+    downloadCSV(filtered, "batches", BATCH_CSV_COLUMNS);
+  };
+
+  const handleExportExcel = () => {
+    if (!filtered.length) return toast.error("No data available");
+    exportToExcel(filtered, "batches", BATCH_CSV_COLUMNS);
+  };
+
+  const handleExportPDF = () => {
+    if (!filtered.length) return toast.error("No data available");
+    exportToPDF("Commission Batches Report", BATCH_CSV_COLUMNS, filtered, "batches_list");
+  };
+
   const filtered = batches.filter(b => b.batch_name.toLowerCase().includes(search.toLowerCase()));
 
   return (
@@ -349,9 +381,24 @@ function BatchesContent() {
           <p className="text-sm text-slate-500 mt-1">Manage and process periodic commission payouts</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button onClick={() => downloadCSV(filtered, "batches", BATCH_CSV_COLUMNS)} variant="outline" className="h-10 rounded-xl border-slate-200 bg-white text-xs font-semibold shadow-sm hover:bg-slate-50">
-            <Download className="h-3.5 w-3.5 mr-2" /> Export
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="h-10 rounded-xl border-slate-200 bg-white text-xs font-semibold shadow-sm hover:bg-slate-50">
+                <Download className="h-3.5 w-3.5 mr-2" /> Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40 p-1 rounded-xl shadow-lg border border-slate-100 bg-white">
+              <DropdownMenuItem onClick={handleExportCSV} className="h-10 rounded-lg text-xs font-medium text-slate-600 cursor-pointer focus:bg-slate-50">
+                CSV Document
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportExcel} className="h-10 rounded-lg text-xs font-medium text-slate-600 cursor-pointer focus:bg-slate-50">
+                Excel Spreadsheet
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportPDF} className="h-10 rounded-lg text-xs font-medium text-slate-600 cursor-pointer focus:bg-slate-50">
+                PDF Catalog
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           {(user?.role === "admin" || user?.role === "manager") && (
             <Button onClick={() => setShowCreate(true)} className="bg-blue-600 hover:bg-blue-500 text-white font-semibold h-10 px-5 rounded-xl shadow-sm text-xs transition-all active:scale-95 flex items-center gap-2">
               <Plus className="h-4 w-4" /> Create Batch

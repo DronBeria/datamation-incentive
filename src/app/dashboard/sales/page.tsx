@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { syncToLocal } from "@/lib/hybrid-sync";
-import { downloadCSV } from "@/lib/export-utils";
+import { downloadCSV, exportToExcel, exportToPDF } from "@/lib/export-utils";
 import {
   Plus, Loader2, Search, CheckCircle2, XCircle, MoreHorizontal,
   ShoppingCart, TrendingUp, Clock, Banknote, Download, Info,
@@ -172,9 +172,24 @@ export default function SalesPage() {
 
   const isManager = ["admin", "manager"].includes(user?.role || "");
 
-  const handleExport = () => {
+  const handleExportCSV = () => {
     if (!filtered.length) return toast.error("No data available");
     downloadCSV(filtered.map(l => ({ ...l, status: STATUS_MAP[l.status]?.label || l.status })), "revenue_stream", SALES_CSV_COLUMNS);
+  };
+
+  const handleExportExcel = () => {
+    if (!filtered.length) return toast.error("No data available");
+    exportToExcel(filtered.map(l => ({ ...l, status: STATUS_MAP[l.status]?.label || l.status })), "revenue_stream", SALES_CSV_COLUMNS);
+  };
+
+  const handleExportPDF = () => {
+    if (!filtered.length) return toast.error("No data available");
+    exportToPDF("Sales Ledger & Commission Report", SALES_CSV_COLUMNS, filtered.map(l => ({
+      ...l,
+      status: STATUS_MAP[l.status]?.label || l.status,
+      deal_value: `₹${l.deal_value.toLocaleString("en-IN")}`,
+      calculated_commission: `₹${l.calculated_commission.toLocaleString("en-IN")}`
+    })), "sales_ledger");
   };
 
   return (
@@ -186,9 +201,24 @@ export default function SalesPage() {
           <p className="text-sm text-slate-500 mt-1">Track and manage individual sales transactions and commissions</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button onClick={handleExport} variant="outline" className="h-10 rounded-xl border-slate-200 bg-white text-xs font-semibold shadow-sm hover:bg-slate-50">
-            <Download className="h-3.5 w-3.5 mr-2" /> Export
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="h-10 rounded-xl border-slate-200 bg-white text-xs font-semibold shadow-sm hover:bg-slate-50">
+                <Download className="h-3.5 w-3.5 mr-2" /> Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40 p-1 rounded-xl shadow-lg border border-slate-100 bg-white">
+              <DropdownMenuItem onClick={handleExportCSV} className="h-10 rounded-lg text-xs font-medium text-slate-600 cursor-pointer focus:bg-slate-50">
+                CSV Document
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportExcel} className="h-10 rounded-lg text-xs font-medium text-slate-600 cursor-pointer focus:bg-slate-50">
+                Excel Spreadsheet
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportPDF} className="h-10 rounded-lg text-xs font-medium text-slate-600 cursor-pointer focus:bg-slate-50">
+                PDF Document
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button onClick={() => setShowCreate(true)} className="bg-blue-600 hover:bg-blue-500 text-white font-semibold h-10 px-5 rounded-xl shadow-sm text-xs transition-all active:scale-95 flex items-center gap-2">
             <Plus className="h-4 w-4" /> Log Sale
           </Button>

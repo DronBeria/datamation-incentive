@@ -5,7 +5,9 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Loader2, Bell, CheckCheck, Info, Search, Filter, Trash2, Calendar, Megaphone, ShieldAlert, Zap, Sparkles, Inbox, Trash, ChevronRight } from "lucide-react";
+import { Loader2, Bell, CheckCheck, Info, Search, Filter, Trash2, Calendar, Megaphone, ShieldAlert, Zap, Sparkles, Inbox, Trash, ChevronRight, Download } from "lucide-react";
+import { downloadCSV, exportToExcel, exportToPDF } from "@/lib/export-utils";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 
 const NOTIF_CONFIG: Record<string, { icon: any; color: string; bg: string; dot: string }> = {
@@ -56,6 +58,55 @@ export default function NotificationsPage() {
     toast.success("Alert purged");
   };
 
+  const handleExportCSV = () => {
+    if (!filtered.length) return toast.error("No notifications to export");
+    downloadCSV(filtered.map(n => ({
+      created_at: new Date(n.created_at).toLocaleString(),
+      title: n.title,
+      message: n.message,
+      type: n.type,
+      status: n.is_read ? "Read" : "Unread",
+    })), "notifications_export", [
+      { key: "created_at", label: "Date" },
+      { key: "title", label: "Title" },
+      { key: "message", label: "Message" },
+      { key: "type", label: "Type" },
+      { key: "status", label: "Status" },
+    ]);
+  };
+
+  const handleExportExcel = () => {
+    if (!filtered.length) return toast.error("No notifications to export");
+    exportToExcel(filtered.map(n => ({
+      created_at: new Date(n.created_at).toLocaleString(),
+      title: n.title,
+      message: n.message,
+      type: n.type,
+      status: n.is_read ? "Read" : "Unread",
+    })), "notifications_export", [
+      { key: "created_at", label: "Date" },
+      { key: "title", label: "Title" },
+      { key: "message", label: "Message" },
+      { key: "type", label: "Type" },
+      { key: "status", label: "Status" },
+    ]);
+  };
+
+  const handleExportPDF = () => {
+    if (!filtered.length) return toast.error("No notifications to export");
+    exportToPDF("Notification Inbox Report", [
+      { key: "created_at", label: "Date" },
+      { key: "title", label: "Title" },
+      { key: "type", label: "Type" },
+      { key: "status", label: "Status" },
+    ], filtered.map(n => ({
+      created_at: new Date(n.created_at).toLocaleString(),
+      title: n.title,
+      type: n.type?.toUpperCase(),
+      status: n.is_read ? "READ" : "UNREAD",
+    })), "notifications_report");
+  };
+
   const filtered = useMemo(() => {
     return notifications.filter(n => {
       const matchSearch = (n.title || "").toLowerCase().includes(search.toLowerCase()) ||
@@ -79,11 +130,31 @@ export default function NotificationsPage() {
           <p className="text-sm text-slate-500 mt-1">Stay updated with system activities, role changes, and alerts.</p>
         </div>
         <div className="flex items-center gap-3">
-          {stats.unread > 0 && (
-            <Button onClick={markAllRead} variant="outline" className="h-10 px-4 rounded-xl text-xs font-semibold text-slate-600 border-slate-200 bg-white hover:bg-slate-50">
-              <CheckCheck className="h-4 w-4 mr-2 text-blue-600" /> Mark all read
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="h-10 px-4 rounded-xl text-xs font-semibold text-slate-600 border-slate-200 bg-white">
+                  <Download className="h-3.5 w-3.5 mr-2" /> Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40 p-1 rounded-xl shadow-lg border border-slate-100 bg-white">
+                <DropdownMenuItem onClick={handleExportCSV} className="h-10 rounded-lg text-xs font-medium text-slate-600 cursor-pointer focus:bg-slate-50">
+                  CSV Document
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportExcel} className="h-10 rounded-lg text-xs font-medium text-slate-600 cursor-pointer focus:bg-slate-50">
+                  Excel Spreadsheet
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportPDF} className="h-10 rounded-lg text-xs font-medium text-slate-600 cursor-pointer focus:bg-slate-50">
+                  PDF Document
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {stats.unread > 0 && (
+              <Button onClick={markAllRead} variant="outline" className="h-10 px-4 rounded-xl text-xs font-semibold text-slate-600 border-slate-200 bg-white hover:bg-slate-50">
+                <CheckCheck className="h-4 w-4 mr-2 text-blue-600" /> Mark all read
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
