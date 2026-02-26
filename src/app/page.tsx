@@ -43,10 +43,13 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!loading && user) router.push("/dashboard");
-    // Fetch dynamic quick logins
-    fetch("/api/auth/quick-logins").then(r => r.json()).then(d => {
-      if (Array.isArray(d)) setQuickUsers(d);
-    }).catch(() => { });
+    // Fetch dynamic quick logins with cache buster
+    fetch(`/api/auth/quick-logins?t=${Date.now()}`)
+      .then(r => r.json())
+      .then(d => {
+        if (Array.isArray(d)) setQuickUsers(d);
+      })
+      .catch(() => { });
   }, [user, loading, router]);
 
   const handleLogin = async (e: React.FormEvent) => {

@@ -10,24 +10,22 @@ export async function GET() {
         WITH RankedUsers AS (
             SELECT 
                 u.email, 
-                LOWER(r.name) as label,
-                ROW_NUMBER() OVER(PARTITION BY r.name ORDER BY u.created_at DESC) as rn
+                u.role_id,
+                ROW_NUMBER() OVER(PARTITION BY u.role_id ORDER BY u.created_at DESC) as rn
             FROM public.users u
-            JOIN public.roles r ON u.role_id = r.id
             WHERE u.is_active = TRUE 
-              AND u.approval_status = 'approved'
-              AND LOWER(r.name) IN ('admin', 'manager', 'accounts')
+              AND u.role_id IN (1, 2, 3)
         )
-        SELECT email, label
+        SELECT 
+            email, 
+            CASE role_id 
+                WHEN 1 THEN 'admin'
+                WHEN 2 THEN 'manager'
+                WHEN 3 THEN 'accounts'
+            END as label
         FROM RankedUsers
         WHERE rn = 1
-        ORDER BY 
-            CASE label 
-                WHEN 'admin' THEN 1 
-                WHEN 'manager' THEN 2 
-                WHEN 'accounts' THEN 3 
-                ELSE 4 
-            END
+        ORDER BY role_id ASC
     `).all();
 
         if (!results || results.length === 0) {
