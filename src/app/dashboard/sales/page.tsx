@@ -316,7 +316,7 @@ export default function SalesPage() {
                           <div className="min-w-0">
                             <p className="font-semibold text-slate-900 tracking-tight text-sm truncate">{log.client_name}</p>
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 flex items-center gap-2">
-                              {log.sale_date} <span className="h-1 w-1 rounded-full bg-slate-300" /> {log.salesperson_name}
+                              {log.reference_number || log.id} <span className="h-1 w-1 rounded-full bg-slate-300" /> {log.sale_date} <span className="h-1 w-1 rounded-full bg-slate-300" /> {log.salesperson_name}
                             </p>
                           </div>
                         </div>
@@ -404,7 +404,7 @@ export default function SalesPage() {
                 Transaction Blueprint
               </Badge>
               <DialogTitle className="text-2xl font-heading tracking-tight leading-none mb-2">{detailLog?.client_name}</DialogTitle>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ID: {detailLog?.id} • {detailLog?.sale_date}</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">REF: {detailLog?.reference_number || detailLog?.id} • {detailLog?.sale_date}</p>
             </div>
           </div>
 

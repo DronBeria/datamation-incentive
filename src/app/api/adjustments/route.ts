@@ -64,6 +64,15 @@ export async function POST(req: NextRequest) {
         }
 
         const supabase = getSupabase();
+
+        // Generate Adjustment Ref: ADJ_YYYYMMDD_TYPE_SP
+        const { data: userObj } = await supabase.from('users').select('full_name').eq('id', user_id).single();
+        const spName = userObj?.full_name || "ST";
+        const dateTag = new Date().toISOString().split('T')[0].replace(/-/g, "");
+        const typeShort = type.substring(0, 3).toUpperCase();
+        const spShort = spName.split(' ').map((n: string) => n[0]).join('').toUpperCase();
+        const adjRef = `ADJ_${dateTag}_${typeShort}_${spShort}`;
+
         const { data: adj, error: aErr } = await supabase
             .from('adjustments')
             .insert({
@@ -71,7 +80,8 @@ export async function POST(req: NextRequest) {
                 amount: parseFloat(amount),
                 reason,
                 type,
-                status: 'pending'
+                status: 'pending',
+                reference_number: adjRef
             })
             .select('id')
             .single();

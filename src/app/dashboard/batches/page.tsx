@@ -161,7 +161,7 @@ function BatchDetailModal({ batch, onClose, user, onAction, actionLoading }: any
             </div>
             <div className="flex-1">
               <DialogTitle className="text-xl font-heading tracking-tight leading-none">{batch.batch_name}</DialogTitle>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1.5">ID: {batch.id} • {new Date(batch.created_at).toLocaleDateString()}</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1.5">REF: {batch.reference_number || batch.id} • {new Date(batch.created_at).toLocaleDateString()}</p>
             </div>
             <Badge variant="outline" className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-lg border-none flex items-center gap-1.5 ${cfg.class}`}>
               <div className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
@@ -577,7 +577,7 @@ function BatchesContent() {
                     <div>
                       <h3 className="text-lg font-heading text-slate-900 tracking-tight group-hover:text-blue-600 transition-colors">{batch.batch_name}</h3>
                       <div className="flex items-center gap-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1.5">
-                        <span className="text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg">ID: {batch.id}</span>
+                        <span className="text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg">REF: {batch.reference_number || batch.id}</span>
                         <span className="opacity-30">•</span>
                         <span>{new Date(batch.created_at).toLocaleDateString()}</span>
                         <span className="opacity-30">•</span>

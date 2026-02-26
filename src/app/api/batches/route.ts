@@ -118,6 +118,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Generate Batch Ref: BT_YYYYMMDD_SHORTNAME
+    const dateTag = new Date().toISOString().split('T')[0].replace(/-/g, "");
+    const batchShort = batch_name.substring(0, 4).toUpperCase().replace(/\s/g, "");
+    const batchRef = `BT_${dateTag}_${batchShort}`;
+
     // 1. Create the Batch
     const { data: batch, error: bErr } = await supabase
       .from('incentive_batches')
@@ -127,7 +132,8 @@ export async function POST(req: NextRequest) {
         status: 'draft',
         total_amount: totalAmount,
         period_start: period_start || null,
-        period_end: period_end || null
+        period_end: period_end || null,
+        reference_number: batchRef
       })
       .select('id')
       .single();

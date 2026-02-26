@@ -270,7 +270,8 @@ export default function AdjustmentsPage() {
                                                 </Badge>
                                             </TableCell>
                                             <TableCell className="text-slate-600 text-sm max-w-xs truncate">
-                                                {a.reason}
+                                                <div className="font-medium text-slate-800">{a.reason}</div>
+                                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">REF: {a.reference_number || `ADJ-${a.id}`}</div>
                                             </TableCell>
                                             <TableCell className={`text-right font-bold tabular-nums text-sm ${cfg.amountClass}`}>
                                                 {cfg.sign} ₹{Math.abs(a.amount).toLocaleString("en-IN")}

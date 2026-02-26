@@ -128,6 +128,15 @@ export async function POST(req: NextRequest) {
     if (isNaN(calculatedCommission) || !isFinite(calculatedCommission)) calculatedCommission = 0;
     const managerOverride = ((assignment as any)?.user?.manager_id && calculatedCommission > 0) ? (calculatedCommission * 0.10) : 0;
 
+    // Generate Reference Number: YYYYMMDD_CN_PROD_SP
+    const { data: spUser } = await supabase.from('users').select('full_name').eq('id', spId).single();
+    const spName = spUser?.full_name || "ST";
+    const dateStr = sale_date.replace(/-/g, "");
+    const clientShort = (client_name || "CL").substring(0, 2).toUpperCase();
+    const prodShort = (product || "NA").substring(0, 3).toUpperCase();
+    const spShort = spName.split(' ').map((n: string) => n[0]).join('').toUpperCase();
+    const refNumber = `${dateStr}_${clientShort}_${prodShort}_${spShort}`;
+
     const { data: newLog, error: sErr } = await supabase
       .from('sales_logs')
       .insert({
@@ -141,7 +150,8 @@ export async function POST(req: NextRequest) {
         override_commission: managerOverride,
         status: 'earned',
         notes: body.notes || (is_custom ? "Custom Agreement" : ""),
-        quantity: qty
+        quantity: qty,
+        reference_number: refNumber
       })
       .select('id')
       .single();
