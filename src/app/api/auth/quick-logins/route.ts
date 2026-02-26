@@ -10,6 +10,7 @@ export async function GET() {
         WITH RankedUsers AS (
             SELECT 
                 u.email, 
+                u.full_name,
                 u.role_id,
                 ROW_NUMBER() OVER(PARTITION BY u.role_id ORDER BY u.created_at DESC) as rn
             FROM public.users u
@@ -18,6 +19,7 @@ export async function GET() {
         )
         SELECT 
             email, 
+            full_name,
             CASE role_id 
                 WHEN 1 THEN 'admin'
                 WHEN 2 THEN 'manager'

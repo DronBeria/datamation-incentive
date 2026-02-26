@@ -347,14 +347,18 @@ export default function LoginPage() {
                   <div className="h-px flex-1 bg-slate-200" />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  {quickUsers.map((u) => (
+                  {[...quickUsers].map((u) => (
                     <button
                       key={u.email}
                       onClick={() => quickLogin(u.email)}
-                      className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all active:scale-[0.98] ${ROLE_COLORS[u.label] || "text-slate-400 bg-slate-500/10 border-slate-500/20"}`}
+                      className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all active:scale-[0.98] hover:shadow-md ${ROLE_COLORS[u.label] || "text-slate-400 bg-slate-500/10 border-slate-500/20"}`}
                     >
-                      <span className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-1">{u.label}</span>
-                      <span className="text-[11px] font-medium truncate w-full">{u.email}</span>
+                      <div className="flex items-center justify-between w-full mb-1">
+                        <span className="text-[9px] font-bold uppercase tracking-widest opacity-70">{u.label}</span>
+                        <div className="h-1.5 w-1.5 rounded-full bg-current opacity-40 animate-pulse" />
+                      </div>
+                      <span className="text-xs font-bold truncate w-full leading-tight">{u.full_name || 'System User'}</span>
+                      <span className="text-[10px] opacity-60 truncate w-full font-medium">{u.email}</span>
                     </button>
                   ))}
                 </div>
