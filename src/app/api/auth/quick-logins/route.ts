@@ -1,45 +1,67 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { createClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
 
+function getSupabase() {
+    return createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        { auth: { persistSession: false } }
+    );
+}
+
 export async function GET() {
     try {
-        // Get one active user for each core role for the quick switch
-        const results = await db.prepare(`
-        WITH RankedUsers AS (
-            SELECT 
-                u.email, 
-                u.full_name,
-                u.role_id,
-                ROW_NUMBER() OVER(PARTITION BY u.role_id ORDER BY u.created_at DESC) as rn
-            FROM public.users u
-            WHERE u.is_active = TRUE 
-              AND u.role_id IN (1, 2, 3)
-        )
-        SELECT 
-            email, 
-            full_name,
-            CASE role_id 
-                WHEN 1 THEN 'admin'
-                WHEN 2 THEN 'manager'
-                WHEN 3 THEN 'accounts'
-            END as label
-        FROM RankedUsers
-        WHERE rn = 1
-        ORDER BY role_id ASC
-    `).all();
+        const supabase = getSupabase();
 
-        if (!results || results.length === 0) {
-            // Fallback if DB is empty/reset
+        // Fetch core staff members (Admin, Manager, Accounts) with their role names
+        // Alignment with the dashboard: 1=admin, 2=manager, 3=accounts
+        const { data: users, error } = await supabase
+            .from('users')
+            .select(`
+                email, 
+                full_name, 
+                role_id,
+                roles!inner(name)
+            `)
+            .in('role_id', [1, 2, 3])
+            .eq('is_active', true)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        // Group by role_id to ensure we only have ONE (the latest) per role
+        const staffMap: Record<number, any> = {};
+        for (const u of (users || [])) {
+            const roleName = (u as any).roles?.name;
+            if (!staffMap[u.role_id] && roleName) {
+                staffMap[u.role_id] = {
+                    email: u.email,
+                    full_name: u.full_name,
+                    label: roleName // Use the actual role name from DB
+                };
+            }
+        }
+
+        const results = Object.values(staffMap).sort((a, b) => {
+            const order: Record<string, number> = { 'admin': 1, 'manager': 2, 'accounts': 3 };
+            return (order[a.label] || 0) - (order[b.label] || 0);
+        });
+
+        if (results.length === 0) {
+            console.log("[QUICK_SWITCH] No live data found. Using fallbacks.");
             return NextResponse.json([
                 { label: "admin", email: "admin@datamation.com", full_name: "Master Admin" },
                 { label: "manager", email: "manager@datamation.com", full_name: "Regional Manager" }
             ]);
         }
 
+        console.log("[QUICK_SWITCH] Synchronized with dashboard data:", results.length, "links created");
         return NextResponse.json(results);
-    } catch (error) {
+
+    } catch (e: any) {
+        console.error("[QUICK_SWITCH] Handshake Error:", e.message);
         return NextResponse.json([
             { label: "admin", email: "admin@datamation.com", full_name: "Master Admin" },
             { label: "manager", email: "manager@datamation.com", full_name: "Regional Manager" }
