@@ -40,7 +40,7 @@ const STATUS_CONFIG: Record<string, { label: string; class: string; dot: string 
 };
 
 const BATCH_CSV_COLUMNS = [
-  { key: "id", label: "ID" },
+  { key: "reference_number", label: "Reference #" },
   { key: "batch_name", label: "Batch Name" },
   { key: "status", label: "Status" },
   { key: "total_amount", label: "Total Amount" },
@@ -436,17 +436,17 @@ function BatchesContent() {
 
   const handleExportCSV = () => {
     if (!filtered.length) return toast.error("No data available");
-    downloadCSV(filtered, "batches", BATCH_CSV_COLUMNS);
+    downloadCSV(filtered.map(b => ({ ...b, reference_number: b.reference_number || b.id })), "batches", BATCH_CSV_COLUMNS);
   };
 
   const handleExportExcel = () => {
     if (!filtered.length) return toast.error("No data available");
-    exportToExcel(filtered, "batches", BATCH_CSV_COLUMNS);
+    exportToExcel(filtered.map(b => ({ ...b, reference_number: b.reference_number || b.id })), "batches", BATCH_CSV_COLUMNS);
   };
 
   const handleExportPDF = () => {
     if (!filtered.length) return toast.error("No data available");
-    exportToPDF("Commission Batches Report", BATCH_CSV_COLUMNS, filtered, "batches_list");
+    exportToPDF("Commission Batches Report", BATCH_CSV_COLUMNS, filtered.map(b => ({ ...b, reference_number: b.reference_number || b.id })), "batches_list");
   };
 
   const filtered = batches.filter(b => b.batch_name.toLowerCase().includes(search.toLowerCase()));

@@ -26,6 +26,7 @@ const TYPE_CONFIG: Record<string, { label: string; icon: React.ElementType; amou
 };
 
 const ADJ_CSV_COLUMNS = [
+    { key: "reference_number", label: "Reference #" },
     { key: "full_name", label: "Salesperson" },
     { key: "type", label: "Type" },
     { key: "reason", label: "Reason" },
@@ -116,6 +117,7 @@ export default function AdjustmentsPage() {
         if (!filtered.length) return toast.error("No records available");
         downloadCSV(filtered.map(a => ({
             ...a,
+            reference_number: a.reference_number || a.id,
             amount: `${TYPE_CONFIG[a.type]?.sign || ""}₹${Math.abs(a.amount).toLocaleString("en-IN")}`,
             created_at: new Date(a.created_at).toLocaleDateString(),
         })), "financial_adjustments", ADJ_CSV_COLUMNS);
@@ -125,6 +127,7 @@ export default function AdjustmentsPage() {
         if (!filtered.length) return toast.error("No records available");
         exportToExcel(filtered.map(a => ({
             ...a,
+            reference_number: a.reference_number || a.id,
             amount: `${TYPE_CONFIG[a.type]?.sign || ""}₹${Math.abs(a.amount).toLocaleString("en-IN")}`,
             created_at: new Date(a.created_at).toLocaleDateString(),
         })), "financial_adjustments", ADJ_CSV_COLUMNS);
@@ -134,6 +137,7 @@ export default function AdjustmentsPage() {
         if (!filtered.length) return toast.error("No records available");
         exportToPDF("Financial Adjustments Report", ADJ_CSV_COLUMNS, filtered.map(a => ({
             ...a,
+            reference_number: a.reference_number || a.id,
             amount: `${TYPE_CONFIG[a.type]?.sign || ""}₹${Math.abs(a.amount).toLocaleString("en-IN")}`,
             created_at: new Date(a.created_at).toLocaleDateString(),
         })), "adjustments_ledger");

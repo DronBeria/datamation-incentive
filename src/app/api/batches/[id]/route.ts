@@ -58,10 +58,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             if (admin.email) {
               await sendAdminBatchSubmissionNotification(
                 admin.email,
-                session.full_name || "A Manager",
+                session.full_name || "Manager",
                 batch.batch_name,
-                0, // itemCount not immediately available here without another query, using 0 or fetching
-                batch.total_amount
+                0, // itemCount placeholder
+                batch.total_amount,
+                batch.reference_number
               );
             }
           }
@@ -99,7 +100,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           const { data: user } = await supabase.from('users').select('email, full_name').eq('id', spId).single();
           if (user?.email) {
             try {
-              await sendBatchApprovedEmail(user.email, user.full_name, batch.batch_name, total);
+              await sendBatchApprovedEmail(user.email, user.full_name, batch.batch_name, total, batch.reference_number);
             } catch (e: any) {
               console.error(`[BATCH_NOTIFY] Failed to send approval email to ${user.email}:`, e.message);
             }
@@ -120,7 +121,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
           if (acc.email) {
             try {
-              await sendAccountsBatchNotification(acc.email, batch.batch_name, batch.total_amount, session.full_name || "Administrator");
+              await sendAccountsBatchNotification(acc.email, batch.batch_name, batch.total_amount, session.full_name || "Administrator", batch.reference_number);
             } catch (e) {
               console.warn("[BATCH_APPROVE_FINANCE_NOTIFY] Error:", e);
             }
@@ -173,7 +174,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           const { data: user } = await supabase.from('users').select('email, full_name').eq('id', spId).single();
           if (user?.email) {
             try {
-              await sendBatchPaidEmail(user.email, user.full_name, batch.batch_name, total);
+              await sendBatchPaidEmail(user.email, user.full_name, batch.batch_name, total, batch.reference_number);
             } catch (e: any) {
               console.error(`[BATCH_NOTIFY] Failed to send payment email to ${user.email}:`, e.message);
             }

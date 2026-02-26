@@ -37,6 +37,7 @@ const STATUS_MAP: Record<string, { label: string; class: string; dot: string }> 
 };
 
 const SALES_CSV_COLUMNS = [
+  { key: "reference_number", label: "Reference #" },
   { key: "client_name", label: "Client" },
   { key: "salesperson_name", label: "Salesperson" },
   { key: "product", label: "Product" },
@@ -174,18 +175,27 @@ export default function SalesPage() {
 
   const handleExportCSV = () => {
     if (!filtered.length) return toast.error("No data available");
-    downloadCSV(filtered.map(l => ({ ...l, status: STATUS_MAP[l.status]?.label || l.status })), "revenue_stream", SALES_CSV_COLUMNS);
+    downloadCSV(filtered.map(l => ({
+      ...l,
+      reference_number: l.reference_number || l.id,
+      status: STATUS_MAP[l.status]?.label || l.status
+    })), "revenue_stream", SALES_CSV_COLUMNS);
   };
 
   const handleExportExcel = () => {
     if (!filtered.length) return toast.error("No data available");
-    exportToExcel(filtered.map(l => ({ ...l, status: STATUS_MAP[l.status]?.label || l.status })), "revenue_stream", SALES_CSV_COLUMNS);
+    exportToExcel(filtered.map(l => ({
+      ...l,
+      reference_number: l.reference_number || l.id,
+      status: STATUS_MAP[l.status]?.label || l.status
+    })), "revenue_stream", SALES_CSV_COLUMNS);
   };
 
   const handleExportPDF = () => {
     if (!filtered.length) return toast.error("No data available");
-    exportToPDF("Sales Ledger & Commission Report", SALES_CSV_COLUMNS, filtered.map(l => ({
+    exportToPDF("Revenue Audit Trail", SALES_CSV_COLUMNS, filtered.map(l => ({
       ...l,
+      reference_number: l.reference_number || l.id,
       status: STATUS_MAP[l.status]?.label || l.status,
       deal_value: `₹${l.deal_value.toLocaleString("en-IN")}`,
       calculated_commission: `₹${l.calculated_commission.toLocaleString("en-IN")}`

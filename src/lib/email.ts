@@ -156,7 +156,8 @@ export async function sendAdminBatchSubmissionNotification(
   managerName: string,
   batchName: string,
   itemCount: number,
-  totalValue: number
+  totalValue: number,
+  referenceNumber?: string
 ) {
   const formattedAmount = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalValue);
   const html = baseTemplate(`
@@ -164,7 +165,7 @@ export async function sendAdminBatchSubmissionNotification(
     <p style="margin:0 0 24px;color:#475569;line-height:1.6;font-size:15px;"><strong>${managerName}</strong> has submitted a new incentive batch for your final approval.</p>
     <div style="background:#f8fafc;border:1px solid ${BORDER};border-radius:12px;padding:24px;margin:0 0 24px;">
       <table style="width:100%;border-collapse:collapse;">
-        <tr><td style="padding:8px 0;color:#64748b;font-size:12px;font-weight:700;text-transform:uppercase;width:120px;">Batch ID</td><td style="padding:8px 0;font-weight:700;color:${DARK};">${batchName}</td></tr>
+        <tr><td style="padding:8px 0;color:#64748b;font-size:12px;font-weight:700;text-transform:uppercase;width:120px;">Batch ID</td><td style="padding:8px 0;font-weight:700;color:${DARK};">${batchName} ${referenceNumber ? `(REF: ${referenceNumber})` : ''}</td></tr>
         <tr><td style="padding:8px 0;color:#64748b;font-size:12px;font-weight:700;text-transform:uppercase;">Recipients</td><td style="padding:8px 0;color:#1e293b;">${itemCount} users</td></tr>
         <tr><td style="padding:8px 0;color:#64748b;font-size:12px;font-weight:700;text-transform:uppercase;">Total Volume</td><td style="padding:8px 0;font-weight:800;color:#1e293b;font-size:18px;">${formattedAmount}</td></tr>
       </table>
@@ -247,11 +248,11 @@ export async function sendIncentiveUpdate(to: string, userName: string, action: 
   return sendMail({ to, subject: `PayoutPower — ${action}`, html });
 }
 
-export async function sendBatchApprovedEmail(to: string, userName: string, batchName: string, amount: number) {
+export async function sendBatchApprovedEmail(to: string, userName: string, batchName: string, amount: number, referenceNumber?: string) {
   const formattedAmount = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
   const html = baseTemplate(`
     <h2 style="margin:0 0 12px;color:#065f46;font-size:22px;font-weight:900;">Commission Authorized!</h2>
-    <p style="margin:0 0 24px;color:#475569;line-height:1.6;font-size:15px;">Excellent news ${userName}, your payout for <strong>${batchName}</strong> has been authorized.</p>
+    <p style="margin:0 0 24px;color:#475569;line-height:1.6;font-size:15px;">Excellent news ${userName}, your payout for <strong>${batchName}</strong> ${referenceNumber ? `(REF: ${referenceNumber})` : ''} has been authorized.</p>
     <div style="background:#ecfdf5;border:1px solid #10b981;border-radius:12px;padding:24px;margin:0 0 24px;">
       <p style="margin:4px 0 0;font-size:32px;font-weight:900;color:#064e3b;letter-spacing:-1.5px;">${formattedAmount}</p>
     </div>
@@ -260,10 +261,11 @@ export async function sendBatchApprovedEmail(to: string, userName: string, batch
   return sendMail({ to, subject: `Incentive Approved — ${formattedAmount} from ${batchName}`, html });
 }
 
-export async function sendBatchPaidEmail(to: string, userName: string, batchName: string, amount: number) {
+export async function sendBatchPaidEmail(to: string, userName: string, batchName: string, amount: number, referenceNumber?: string) {
   const formattedAmount = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
   const html = baseTemplate(`
     <h2 style="margin:0 0 12px;color:#1e40af;font-size:22px;font-weight:900;">Disbursement Successful</h2>
+    <p style="margin:0 0 24px;color:#475569;line-height:1.6;font-size:15px;">The disbursement for <strong>${batchName}</strong> ${referenceNumber ? `(REF: ${referenceNumber})` : ''} has been completed.</p>
     <div style="background:#eff6ff;border:1px solid #3b82f6;border-radius:12px;padding:24px;margin:0 0 24px;">
       <p style="margin:4px 0 0;font-size:32px;font-weight:900;color:#1e3a8a;letter-spacing:-1.5px;">${formattedAmount}</p>
     </div>
@@ -276,7 +278,8 @@ export async function sendAccountsBatchNotification(
   accountsEmail: string,
   batchName: string,
   totalAmount: number,
-  approvedBy: string
+  approvedBy: string,
+  referenceNumber?: string
 ) {
   const formattedAmount = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalAmount);
   const html = baseTemplate(`
@@ -284,7 +287,7 @@ export async function sendAccountsBatchNotification(
     <p style="margin:0 0 24px;color:#475569;line-height:1.6;font-size:15px;">Finance Team, a new commission batch has been <strong style="color:#059669;">fully authorized</strong> for disbursement by ${approvedBy}.</p>
     <div style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:12px;padding:24px;margin:0 0 24px;">
       <table style="width:100%;border-collapse:collapse;">
-        <tr><td style="padding:8px 0;color:#64748b;font-size:12px;font-weight:700;text-transform:uppercase;width:120px;">Batch Name</td><td style="padding:8px 0;font-weight:700;color:#0f172a;">${batchName}</td></tr>
+        <tr><td style="padding:8px 0;color:#64748b;font-size:12px;font-weight:700;text-transform:uppercase;width:120px;">Batch Name</td><td style="padding:8px 0;font-weight:700;color:#0f172a;">${batchName} ${referenceNumber ? `(REF: ${referenceNumber})` : ''}</td></tr>
         <tr><td style="padding:8px 0;color:#64748b;font-size:12px;font-weight:700;text-transform:uppercase;">Volume</td><td style="padding:8px 0;font-weight:800;color:#0f172a;font-size:18px;">${formattedAmount}</td></tr>
       </table>
     </div>

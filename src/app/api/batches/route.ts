@@ -186,7 +186,7 @@ export async function POST(req: NextRequest) {
         for (const acc of (accountsList as any[])) {
           // Changed to audit notice style
           if (acc.email) {
-            await sendIncentiveUpdate(acc.email, "Accounts Team", `A new payout bundle "${batch_name}" has been drafted and is awaiting managerial submission.`, totalAmount);
+            await sendIncentiveUpdate(acc.email, "Accounts Team", `A new payout bundle "${batch_name}" (REF: ${batchRef}) has been drafted and is awaiting managerial submission.`, totalAmount);
           }
         }
       }

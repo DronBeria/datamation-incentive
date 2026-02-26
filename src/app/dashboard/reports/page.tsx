@@ -102,6 +102,7 @@ export default function ReportsPage() {
       {
         heading: "Batch Aging Report",
         columns: [
+          { key: "reference_number", label: "Reference #" },
           { key: "batch_name", label: "Batch Name" },
           { key: "status", label: "Status" },
           { key: "total_amount", label: "Amount (₹)" },
@@ -110,6 +111,7 @@ export default function ReportsPage() {
         ],
         data: (data.aging || []).map((a: any) => ({
           ...a,
+          reference_number: a.reference_number || a.id,
           created_at: new Date(a.created_at).toLocaleDateString(),
         })),
       },
@@ -406,7 +408,7 @@ export default function ReportsPage() {
                         </div>
                         <div>
                           <p className="font-semibold text-slate-900 tracking-tight text-sm">{a.batch_name}</p>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">ID: {a.id}</p>
+                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">REF: {a.reference_number || a.id}</p>
                         </div>
                       </div>
                     </TableCell>
