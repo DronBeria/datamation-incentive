@@ -49,10 +49,14 @@ export async function GET(req: NextRequest) {
     } else if (role === "manager") {
       query = query.eq('created_by', session.id);
     } else if (role === "salesperson") {
-      // For salespersons, they should only see batches they are part of.
-      // Supabase join filtering is tricky, usually better to fetch and filter or use an RPC.
-      // For now, let's allow them to see batches if they are in the items.
-      // This might require a more complex query or multiple steps.
+      // Find batches where this user has items
+      const { data: userBatches } = await supabase.from('batch_items').select('batch_id').eq('salesperson_id', session.id);
+      const batchIds = Array.from(new Set((userBatches || []).map(b => b.batch_id)));
+      if (batchIds.length > 0) {
+        query = query.in('id', batchIds);
+      } else {
+        return NextResponse.json([]); // No batches for this user
+      }
     }
 
     if (status && status !== 'all') {
@@ -104,6 +108,16 @@ export async function POST(req: NextRequest) {
     const supabase = getSupabase();
     const totalAmount = items.reduce((s: number, i: any) => s + (i.amount || 0), 0);
 
+    // Verify all items are still in 'earned' status to prevent double-batching
+    const logIds = items.filter((i: any) => i.sales_log_id).map((i: any) => i.sales_log_id);
+    if (logIds.length > 0) {
+      const { data: logs } = await supabase.from('sales_logs').select('status, id').in('id', logIds);
+      const invalid = logs?.filter(l => l.status !== 'earned');
+      if (invalid && invalid.length > 0) {
+        return NextResponse.json({ error: "One or more commission items are already assigned to another batch or paid." }, { status: 400 });
+      }
+    }
+
     // 1. Create the Batch
     const { data: batch, error: bErr } = await supabase
       .from('incentive_batches')
@@ -136,7 +150,6 @@ export async function POST(req: NextRequest) {
     if (iErr) throw iErr;
 
     // 3. Update Sales Logs status to 'accrued'
-    const logIds = items.filter((i: any) => i.sales_log_id).map((i: any) => i.sales_log_id);
     if (logIds.length > 0) {
       const { error: lErr } = await supabase
         .from('sales_logs')
@@ -165,7 +178,10 @@ export async function POST(req: NextRequest) {
 
       if (accountsList) {
         for (const acc of (accountsList as any[])) {
-          await sendIncentiveUpdate(acc.email, "Accounts Team", `New Batch Draft: ${batch_name}`, totalAmount);
+          // Changed to audit notice style
+          if (acc.email) {
+            await sendIncentiveUpdate(acc.email, "Accounts Team", `A new payout bundle "${batch_name}" has been drafted and is awaiting managerial submission.`, totalAmount);
+          }
         }
       }
     } catch (e) {

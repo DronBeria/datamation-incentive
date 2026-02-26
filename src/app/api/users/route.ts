@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { createClient } from "@supabase/supabase-js";
 import bcrypt from "bcryptjs";
-import { sendUserStatusUpdate, sendWelcomeEmail } from "@/lib/email";
+import { sendUserStatusUpdate, sendWelcomeEmail, sendAdminUserUpdateNotification } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -156,7 +156,21 @@ export async function PUT(req: Request) {
       approval_status: status,
       manager_id: (manager_id === "none" || !manager_id) ? null : parseInt(manager_id)
     };
-    if (body.password) updateData.password_hash = bcrypt.hashSync(body.password, 10);
+    // 1.5 Fetch current data for comparison and notification
+    const { data: oldUser } = await supabase.from('users').select('*').eq('id', id).single();
+    const fieldsChanged: string[] = [];
+    if (oldUser) {
+      if (oldUser.full_name !== full_name) fieldsChanged.push("Full Name");
+      if (oldUser.email !== email) fieldsChanged.push("Email Address");
+      if (oldUser.department !== department) fieldsChanged.push("Department");
+      if (oldUser.role_id !== parsedRoleId) fieldsChanged.push("System Role");
+      if (oldUser.approval_status !== status) fieldsChanged.push("Approval Status");
+    }
+
+    if (body.password) {
+      updateData.password_hash = bcrypt.hashSync(body.password, 10);
+      fieldsChanged.push("Password (Reset)");
+    }
 
     console.log("[USER_PUT] Updating users table with data:", JSON.stringify(updateData));
     const numericId = parseInt(String(id));
@@ -200,6 +214,22 @@ export async function PUT(req: Request) {
 
     if (approval_status && approval_status !== "pending") {
       try { await sendUserStatusUpdate(email, full_name, status === 'approved' ? 'approved' : 'rejected'); } catch (e) { }
+    }
+
+    // Security Notification to Admin
+    if (fieldsChanged.length > 0 && userRole !== 'admin') {
+      try {
+        const { data: admins } = await supabase.from('users').select('email').eq('role_id', 1).eq('is_active', true);
+        if (admins) {
+          for (const admin of admins) {
+            if (admin.email) {
+              await sendAdminUserUpdateNotification(admin.email, full_name, fieldsChanged);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("[USER_UPDATE_NOTIFY] Error:", e);
+      }
     }
 
     return NextResponse.json({ message: "Updated successfully" });

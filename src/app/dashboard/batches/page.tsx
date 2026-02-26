@@ -287,6 +287,20 @@ function BatchDetailModal({ batch, onClose, user, onAction, actionLoading }: any
                 {actionLoading === batch.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Mark Entire Batch Paid"}
               </Button>
             )}
+            {(batch.status === "draft" || batch.status === "rejected") && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (window.confirm("Are you sure you want to delete this batch? All items will be returned to the earned pool.")) {
+                    onAction(batch.id, "delete");
+                  }
+                }}
+                disabled={actionLoading === batch.id}
+                className="h-11 border-slate-200 text-red-600 hover:bg-red-50 hover:border-red-100 rounded-xl font-bold text-xs px-6"
+              >
+                {actionLoading === batch.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete Batch"}
+              </Button>
+            )}
             <Button variant="ghost" onClick={onClose} className="h-11 rounded-xl font-semibold text-slate-500 text-xs px-6">Close</Button>
           </div>
         </div>
@@ -355,15 +369,24 @@ function BatchesContent() {
   const handleAction = async (batchId: number, action: string, rejection_reason?: string, extra?: any) => {
     setActionLoading(batchId);
     try {
+      const isDelete = action === 'delete';
       const res = await fetch(`/api/batches/${batchId}`, {
-        method: "PATCH",
+        method: isDelete ? "DELETE" : "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, rejection_reason, ...extra })
+        body: isDelete ? null : JSON.stringify({ action, rejection_reason, ...extra })
       });
       if (res.ok) {
-        toast.success(action === 'pay_selected' ? "Payment execution batch created" : "Batch lifecycle successfully updated");
+        toast.success(
+          isDelete ? "Batch permanently deleted" :
+            action === 'pay_selected' ? "Payment execution batch created" :
+              "Batch lifecycle successfully updated"
+        );
         fetchBatches();
         setSelectedBatch(null);
+        setExpandedId(null);
+      } else {
+        const err = await res.json();
+        toast.error(err.error || "Action could not be completed");
       }
     } catch { toast.error("Action error"); }
     finally { setActionLoading(null); }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { createClient } from "@supabase/supabase-js";
-import { sendBatchApprovedEmail, sendBatchPaidEmail } from "@/lib/email";
+import { sendBatchApprovedEmail, sendBatchPaidEmail, sendAdminBatchSubmissionNotification, sendAccountsBatchNotification } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -50,6 +50,26 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         updated_at: new Date().toISOString()
       }).eq('id', id);
 
+      // Notification to Admin
+      try {
+        const { data: admins } = await supabase.from('users').select('email').eq('role_id', 1).eq('is_active', true);
+        if (admins) {
+          for (const admin of admins) {
+            if (admin.email) {
+              await sendAdminBatchSubmissionNotification(
+                admin.email,
+                session.full_name || "A Manager",
+                batch.batch_name,
+                0, // itemCount not immediately available here without another query, using 0 or fetching
+                batch.total_amount
+              );
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("[BATCH_SUBMIT_NOTIFY] Error:", e);
+      }
+
     } else if (action === "approve") {
       if (oldStatus !== "pending_approval") return NextResponse.json({ error: "Only pending batches can be approved" }, { status: 400 });
       if (userRole !== "admin") return NextResponse.json({ error: "Only administrators can grant final approval" }, { status: 403 });
@@ -88,7 +108,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
 
       // Notify Accounts
-      const { data: accounts } = await supabase.from('users').select('id, roles!inner(name)').eq('roles.name', 'accounts');
+      const { data: accounts } = await supabase.from('users').select('id, email, roles!inner(name)').eq('roles.name', 'accounts');
       if (accounts) {
         for (const acc of accounts) {
           await supabase.from('notifications').insert({
@@ -97,6 +117,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             message: `Batch "${batch.batch_name}" (₹${batch.total_amount.toLocaleString()}) requires final payment.`,
             type: 'info'
           });
+
+          if (acc.email) {
+            try {
+              await sendAccountsBatchNotification(acc.email, batch.batch_name, batch.total_amount, session.full_name || "Administrator");
+            } catch (e) {
+              console.warn("[BATCH_APPROVE_FINANCE_NOTIFY] Error:", e);
+            }
+          }
         }
       }
 
@@ -248,6 +276,61 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   } catch (error: any) {
     console.error("[BATCH_PATCH_ERROR]", error.message);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const session = await getSession();
+    if (!session || !["admin", "manager"].includes(session.role.toLowerCase())) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const { id } = await params;
+    const supabase = getSupabase();
+
+    // 1. Fetch batch to verify status
+    const { data: batch, error: bErr } = await supabase
+      .from('incentive_batches')
+      .select('status, batch_name, total_amount')
+      .eq('id', id)
+      .single();
+
+    if (bErr || !batch) return NextResponse.json({ error: "Batch not found" }, { status: 404 });
+
+    // Only allow deleting non-finalized batches
+    if (["approved", "paid"].includes(batch.status)) {
+      return NextResponse.json({ error: "Cannot delete an approved or paid batch." }, { status: 400 });
+    }
+
+    // 2. Reset associated sales logs back to 'earned'
+    const { data: items } = await supabase.from('batch_items').select('sales_log_id').eq('batch_id', id);
+    if (items) {
+      const logIds = items.filter(i => i.sales_log_id).map(i => i.sales_log_id);
+      if (logIds.length > 0) {
+        await supabase.from('sales_logs').update({ status: 'earned' }).in('id', logIds);
+      }
+    }
+
+    // 3. Delete items and batch
+    await supabase.from('batch_items').delete().eq('batch_id', id);
+    const { error: delErr } = await supabase.from('incentive_batches').delete().eq('id', id);
+
+    if (delErr) throw delErr;
+
+    // 4. Audit
+    await supabase.from('audit_logs').insert({
+      user_id: session.id,
+      action: 'DELETE',
+      entity_type: 'incentive_batch',
+      entity_id: id,
+      old_value: JSON.stringify({ status: batch.status, name: batch.batch_name, total: batch.total_amount })
+    });
+
+    return NextResponse.json({ message: "Batch deleted and items returned to pool" });
+  } catch (error: any) {
+    console.error("[BATCH_DELETE_ERROR]", error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
