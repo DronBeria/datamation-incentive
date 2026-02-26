@@ -144,11 +144,16 @@ export default function UsersPage() {
           manager_id: (form.manager_id && form.manager_id !== 'none') ? form.manager_id : null
         }),
       });
+      const data = await res.json();
       if (res.ok) {
         toast.success(modalMode === "create" ? "Team member indexed" : "Profile updated");
         setShowModal(false); fetchUsers();
+      } else {
+        toast.error(data.error || "Operation failed");
       }
-    } catch { toast.error("Operation failed"); }
+    } catch (err: any) {
+      toast.error("Network error: Profile modification failed");
+    }
     finally { setSubmitting(false); }
   };
 

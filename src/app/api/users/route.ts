@@ -111,12 +111,17 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
   try {
     const session = await getSession();
-    if (!session || !["admin", "manager", "accounts"].includes(session.role.toLowerCase())) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const userRole = (session?.role || "").toLowerCase().trim();
+    console.log("[USER_PUT] Request by:", session?.email, "Role:", userRole);
+    if (!session || !["admin", "manager", "accounts"].includes(userRole)) {
+      return NextResponse.json({ error: "Forbidden: Higher privilege required" }, { status: 403 });
     }
 
     const body = await req.json();
     const { id, email, full_name, role_id, department, is_active, approval_status, scheme_id, manager_id } = body;
+
+    console.log("[USER_PUT] Incoming update request for ID:", id, "| email:", email);
+    console.log("[USER_PUT] Role ID:", role_id, "| Scheme ID:", scheme_id);
 
     const supabase = getSupabase();
     const parsedRoleId = parseInt(role_id);
@@ -124,16 +129,19 @@ export async function PUT(req: Request) {
 
     // 1. Mandatory Scheme Check for Salespeople
     if (status === 'approved' && parsedRoleId === 4) {
-      const { data: active } = await supabase
+      const { data: active, error: aErr } = await supabase
         .from('user_scheme_assignments')
         .select('id')
         .eq('user_id', id)
         .is('end_date', null);
 
-      const hasDB = active && active.length > 0;
-      const willAssign = scheme_id && scheme_id !== 'none';
+      if (aErr) console.error("[USER_PUT] Scheme verify check error:", aErr.message);
 
-      if (!hasDB && !willAssign) {
+      const hasActiveScheme = active && active.length > 0;
+      const willAssignNew = scheme_id && scheme_id !== 'none';
+
+      if (!hasActiveScheme && !willAssignNew) {
+        console.warn("[USER_PUT] Blocking approval: No scheme assigned to salesperson");
         return NextResponse.json({
           error: "Salesperson must be assigned to a scheme before approval. Please select a scheme in the profile editor."
         }, { status: 400 });
@@ -150,27 +158,39 @@ export async function PUT(req: Request) {
     };
     if (body.password) updateData.password_hash = bcrypt.hashSync(body.password, 10);
 
-    const { error: uErr } = await supabase.from('users').update(updateData).eq('id', id);
-    if (uErr) throw uErr;
+    console.log("[USER_PUT] Updating users table with data:", JSON.stringify(updateData));
+    const numericId = parseInt(String(id));
+    if (isNaN(numericId)) throw new Error("Invalid User ID format");
+
+    const { error: uErr } = await supabase.from('users').update(updateData).eq('id', numericId);
+    if (uErr) {
+      console.error("[USER_PUT] Supabase 'users' update error:", uErr.message);
+      throw uErr;
+    }
+    console.log("[USER_PUT] 'users' table update successful");
 
     // 3. Update Scheme Assignment
     if (parsedRoleId === 4 && body.hasOwnProperty('scheme_id')) {
-      const { data: current } = await supabase
+      // Use a standard select to find current assignment
+      const { data: assignments, error: sErr } = await supabase
         .from('user_scheme_assignments')
         .select('scheme_id')
-        .eq('user_id', id)
-        .is('end_date', null)
-        .single();
+        .eq('user_id', numericId)
+        .is('end_date', null);
+
+      if (sErr) console.error("[USER_PUT] Error fetching current scheme:", sErr.message);
+
+      const current = assignments && assignments.length > 0 ? assignments[0] : null;
 
       const newSchemeId = (scheme_id && scheme_id !== 'none') ? parseInt(scheme_id) : null;
 
       if (current?.scheme_id !== newSchemeId) {
         // End old
-        await supabase.from('user_scheme_assignments').update({ end_date: new Date().toISOString().split('T')[0] }).eq('user_id', id).is('end_date', null);
+        await supabase.from('user_scheme_assignments').update({ end_date: new Date().toISOString().split('T')[0] }).eq('user_id', numericId).is('end_date', null);
         // Start new
         if (newSchemeId) {
           await supabase.from('user_scheme_assignments').insert({
-            user_id: id,
+            user_id: numericId,
             scheme_id: newSchemeId,
             start_date: new Date().toISOString().split('T')[0]
           });
