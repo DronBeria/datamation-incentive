@@ -199,9 +199,39 @@ export async function DELETE(req: Request) {
     const supabase = getSupabase();
 
     if (searchParams.get("purge") === "true") {
+      // Safety Guard: Masters cannot be purged
+      if (id === "1") return NextResponse.json({ error: "Master account is protected and cannot be purged." }, { status: 403 });
+
+      // Robust Purge Sequence
+      // 1. Assignments
       await supabase.from('user_scheme_assignments').delete().eq('user_id', id);
+
+      // 2. Notifications & Adjustments
+      await supabase.from('notifications').delete().eq('user_id', id);
+      await supabase.from('adjustments').delete().eq('salesperson_id', id);
+
+      // 3. Sales Logs & Batch Items
+      // We must delete batch items first because they reference sales logs
+      await supabase.from('batch_items').delete().eq('salesperson_id', id);
+      await supabase.from('sales_logs').delete().eq('salesperson_id', id);
+
+      // 4. Batch References (Management Roles)
+      // Set to null instead of deleting the whole batch for auditing history
+      // Note: created_by is NOT NULL, so we reassign to the master admin (ID: 1)
+      await supabase.from('incentive_batches').update({ created_by: 1 }).eq('created_by', id);
+      await supabase.from('incentive_batches').update({ approved_by: null }).eq('approved_by', id);
+      await supabase.from('incentive_batches').update({ paid_by: null }).eq('paid_by', id);
+
+      // 5. Manager References
+      await supabase.from('users').update({ manager_id: null }).eq('manager_id', id);
+
+      // 6. Audit logs cleanup
       await supabase.from('audit_logs').delete().eq('entity_id', id).eq('entity_type', 'user');
-      await supabase.from('users').delete().eq('id', id);
+      await supabase.from('audit_logs').delete().eq('user_id', id);
+
+      // 7. Final User Deletion
+      const { error: delErr } = await supabase.from('users').delete().eq('id', id);
+      if (delErr) throw delErr;
     } else {
       await supabase.from('users').update({ is_active: false }).eq('id', id);
     }

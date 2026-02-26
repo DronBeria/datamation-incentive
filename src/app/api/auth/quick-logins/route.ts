@@ -33,16 +33,16 @@ export async function GET() {
         if (!results || results.length === 0) {
             // Fallback if DB is empty/reset
             return NextResponse.json([
-                { label: "admin", email: "admin@datamation.com" },
-                { label: "manager", email: "manager@datamation.com" }
+                { label: "admin", email: "admin@datamation.com", full_name: "Master Admin" },
+                { label: "manager", email: "manager@datamation.com", full_name: "Regional Manager" }
             ]);
         }
 
         return NextResponse.json(results);
     } catch (error) {
         return NextResponse.json([
-            { label: "admin", email: "admin@datamation.com" },
-            { label: "manager", email: "manager@datamation.com" }
+            { label: "admin", email: "admin@datamation.com", full_name: "Master Admin" },
+            { label: "manager", email: "manager@datamation.com", full_name: "Regional Manager" }
         ]);
     }
 }

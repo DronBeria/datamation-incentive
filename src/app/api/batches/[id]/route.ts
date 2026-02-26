@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { sendBatchApprovedEmail, sendBatchPaidEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function getSupabase() {
   return createClient(
@@ -77,7 +78,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
           const { data: user } = await supabase.from('users').select('email, full_name').eq('id', spId).single();
           if (user?.email) {
-            try { await sendBatchApprovedEmail(user.email, user.full_name, batch.batch_name, total); } catch { }
+            try {
+              await sendBatchApprovedEmail(user.email, user.full_name, batch.batch_name, total);
+            } catch (e: any) {
+              console.error(`[BATCH_NOTIFY] Failed to send approval email to ${user.email}:`, e.message);
+            }
           }
         }
       }
@@ -139,7 +144,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
           const { data: user } = await supabase.from('users').select('email, full_name').eq('id', spId).single();
           if (user?.email) {
-            try { await sendBatchPaidEmail(user.email, user.full_name, batch.batch_name, total); } catch { }
+            try {
+              await sendBatchPaidEmail(user.email, user.full_name, batch.batch_name, total);
+            } catch (e: any) {
+              console.error(`[BATCH_NOTIFY] Failed to send payment email to ${user.email}:`, e.message);
+            }
           }
         }
       }
@@ -214,7 +223,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
         const { data: user } = await supabase.from('users').select('email, full_name').eq('id', spId).single();
         if (user?.email) {
-          try { await sendBatchPaidEmail(user.email, user.full_name, newBatchName, total); } catch { }
+          try {
+            await sendBatchPaidEmail(user.email, user.full_name, newBatchName, total);
+          } catch (e: any) {
+            console.error(`[BATCH_NOTIFY] Failed to send partial payment email to ${user.email}:`, e.message);
+          }
         }
       }
 

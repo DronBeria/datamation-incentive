@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { createClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function getSupabase() {
     return createClient(

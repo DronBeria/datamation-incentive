@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { sendIncentiveUpdate } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function getSupabase() {
   return createClient(
