@@ -189,8 +189,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Content Area */}
         <main className="flex-1 overflow-y-auto p-6 md:p-8">
-          <div className="max-w-7xl mx-auto">
-            {children}
+          <div className="max-w-7xl mx-auto min-h-[calc(100vh-10rem)] flex flex-col">
+            <div className="flex-1">
+              {children}
+            </div>
+
+            {/* Minimal Dashboard Footer */}
+            <div className="mt-12 py-6 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">© 2026 PayoutPower IMS</p>
+              <p className="text-[10px] sm:text-[11px] font-medium text-slate-400 tracking-tight">
+                Developed and Powered by{" "}
+                <a
+                  href="https://arcwebworks.in"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-slate-600 hover:text-blue-600 transition-colors font-semibold"
+                >
+                  Arc WebWorks
+                </a>
+              </p>
+            </div>
           </div>
         </main>
       </div>
