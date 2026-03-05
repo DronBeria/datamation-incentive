@@ -1,12 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
+import { Cache } from "@/lib/cache";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // High-performance caching layer to handle end-of-month traffic spikes
+  const CACHE_KEY = `kpi_stats_${session.id}_${session.role}`;
+  const cachedStats = await Cache.get(CACHE_KEY);
+  if (cachedStats) {
+    return NextResponse.json(cachedStats);
+  }
 
   if (session.role === "admin") {
     const [totalUsers, activeUsers, totalSales, totalCommissions, pendingBatches, totalAccrued, activeSchemes, globalPendingLogs, pendingUsersCount] = await Promise.all([
@@ -39,6 +47,7 @@ export async function GET() {
       pendingUsers: (pendingUsersCount as any)?.c || 0,
       recentAudit: Array.isArray(recentAudit) ? recentAudit : [],
     };
+    await Cache.set(CACHE_KEY, stats, 60);
     return NextResponse.json(stats);
   }
 
@@ -72,6 +81,7 @@ export async function GET() {
       activeSchemes: (activeSchemes as any)?.c || 0,
       recentAudit: Array.isArray(recentAudit) ? recentAudit : [],
     };
+    await Cache.set(CACHE_KEY, stats, 60);
     return NextResponse.json(stats);
   }
 
@@ -87,6 +97,7 @@ export async function GET() {
       approvedAmount: (approvedAmount as any)?.s || 0,
       totalLiability: (totalLiability as any)?.s || 0,
     };
+    await Cache.set(CACHE_KEY, stats, 60);
     return NextResponse.json(stats);
   }
 
@@ -120,5 +131,6 @@ export async function GET() {
     monthlySales: sales_val,
     monthlyTarget: target_amount,
   };
+  await Cache.set(CACHE_KEY, stats, 60);
   return NextResponse.json(stats);
 }

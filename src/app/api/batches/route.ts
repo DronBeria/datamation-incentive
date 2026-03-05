@@ -111,10 +111,10 @@ export async function POST(req: NextRequest) {
     // Verify all items are still in 'earned' status to prevent double-batching
     const logIds = items.filter((i: any) => i.sales_log_id).map((i: any) => i.sales_log_id);
     if (logIds.length > 0) {
-      const { data: logs } = await supabase.from('sales_logs').select('status, id').in('id', logIds);
-      const invalid = logs?.filter(l => l.status !== 'earned');
+      const { data: logs } = await supabase.from('sales_logs').select('status, id, dispute_status').in('id', logIds);
+      const invalid = logs?.filter(l => l.status !== 'earned' || l.dispute_status === 'flagged');
       if (invalid && invalid.length > 0) {
-        return NextResponse.json({ error: "One or more commission items are already assigned to another batch or paid." }, { status: 400 });
+        return NextResponse.json({ error: "One or more commission items are already assigned to another batch, paid, or currently flagged for review." }, { status: 400 });
       }
     }
 

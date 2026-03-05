@@ -22,6 +22,7 @@ export async function GET(req: NextRequest) {
     const status = url.searchParams.get("status");
     const dateFrom = url.searchParams.get("from");
     const dateTo = url.searchParams.get("to");
+    const excludeFlagged = url.searchParams.get("exclude_flagged") === "true";
 
     const supabase = getSupabase();
 
@@ -45,6 +46,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (status && status !== 'all') query = query.eq('status', status);
+    if (excludeFlagged) query = query.neq('dispute_status', 'flagged');
     if (dateFrom) query = query.gte('sale_date', dateFrom);
     if (dateTo) query = query.lte('sale_date', dateTo);
 

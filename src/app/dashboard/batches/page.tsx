@@ -360,7 +360,7 @@ function BatchesContent() {
 
   useEffect(() => {
     if (showCreate) {
-      fetch("/api/sales?status=earned")
+      fetch("/api/sales?status=earned&exclude_flagged=true")
         .then(async r => { if (!r.ok) throw new Error(); const d = await r.json(); if (Array.isArray(d)) setSalesLogs(d); })
         .catch(() => toast.error("Infrastructure lookup failed"));
     }

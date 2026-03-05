@@ -24,7 +24,7 @@ import { downloadCSV, exportToExcel, exportToPDF } from "@/lib/export-utils";
 import {
   Plus, Loader2, Search, CheckCircle2, XCircle, MoreHorizontal,
   ShoppingCart, TrendingUp, Clock, Banknote, Download, Info,
-  Eye, ArrowRight, User, Package, Sparkles, Target,
+  Eye, ArrowRight, User, Package, Sparkles, Target, Flag, CheckSquare, AlertTriangle,
 } from "lucide-react";
 import { DateRangePicker } from "@/components/date-range-picker";
 
@@ -150,6 +150,22 @@ export default function SalesPage() {
       });
       if (res.ok) { toast.success(`Transaction successfully ${action}d`); fetchLogs(); }
     } catch { toast.error("Review failed"); }
+    finally { setReviewing(null); }
+  };
+
+  const handleDispute = async (logId: string, action: "flag" | "resolve_flag") => {
+    const note = prompt(action === "flag" ? "Reason for flagging this sale?" : "Resolution note?");
+    if (note === null) return;
+    setReviewing(logId);
+    try {
+      const res = await fetch(`/api/sales/${logId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, note }),
+      });
+      if (res.ok) { toast.success(`Dispute status updated`); fetchLogs(); }
+      else { const d = await res.json(); toast.error(d.error || "Action failed"); }
+    } catch { toast.error("Dispute update failed"); }
     finally { setReviewing(null); }
   };
 
@@ -341,10 +357,17 @@ export default function SalesPage() {
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 truncate max-w-[120px] ml-auto">{log.scheme_name || (log.is_custom ? "Override" : "Standard")}</p>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={`text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg border-none flex w-fit items-center gap-1.5 ${cfg.class}`}>
-                          <div className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
-                          {cfg.label}
-                        </Badge>
+                        <div className="flex flex-col gap-1.5 w-fit">
+                          <Badge variant="outline" className={`text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg border-none flex w-fit items-center gap-1.5 ${cfg.class}`}>
+                            <div className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
+                            {cfg.label}
+                          </Badge>
+                          {log.dispute_status === 'flagged' && (
+                            <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg border-red-100 bg-red-50 text-red-600 flex items-center gap-1.5 w-fit">
+                              <AlertTriangle className="h-3 w-3" /> Flagged
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-right pr-8">
                         {log.status === "pending_review" && isManager ? (
@@ -373,6 +396,16 @@ export default function SalesPage() {
                               <DropdownMenuItem onClick={() => setDetailLog(log)} className="rounded-lg text-xs font-semibold py-2 cursor-pointer">
                                 <Info className="h-3.5 w-3.5 mr-2 text-slate-400" /> View Details
                               </DropdownMenuItem>
+                              {log.status !== "paid" && (!log.dispute_status || log.dispute_status === 'none' || log.dispute_status === 'resolved') && (
+                                <DropdownMenuItem onClick={() => handleDispute(log.id, "flag")} className="rounded-lg text-xs font-semibold py-2 cursor-pointer text-amber-600 focus:text-amber-700 bg-amber-50 mt-1">
+                                  <Flag className="h-3.5 w-3.5 mr-2" /> Flag for Review
+                                </DropdownMenuItem>
+                              )}
+                              {isManager && log.dispute_status === 'flagged' && (
+                                <DropdownMenuItem onClick={() => handleDispute(log.id, "resolve_flag")} className="rounded-lg text-xs font-semibold py-2 cursor-pointer text-emerald-600 focus:text-emerald-700 bg-emerald-50 mt-1">
+                                  <CheckSquare className="h-3.5 w-3.5 mr-2" /> Resolve Dispute
+                                </DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         )}
