@@ -29,16 +29,16 @@ export async function GET(req: NextRequest) {
 
         const role = (session.role || "").toLowerCase();
         if (role === "salesperson") {
-            query = query.eq('salesperson_id', session.id);
+            query = query.eq('user_id', session.id);
         } else if (userId) {
-            query = query.eq('salesperson_id', userId);
+            query = query.eq('user_id', userId);
         }
 
         const { data: rows, error } = await query;
         if (error) throw error;
 
         // Resolve salesperson names separately to avoid FK join issues
-        const spIds = [...new Set((rows || []).map(r => r.salesperson_id).filter(Boolean))];
+        const spIds = [...new Set((rows || []).map(r => r.user_id).filter(Boolean))];
         let nameMap: Record<string, string> = {};
         if (spIds.length > 0) {
             const { data: users } = await supabase
@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
 
         const result = (rows || []).map(r => ({
             ...r,
-            full_name: nameMap[r.salesperson_id] || 'Unknown'
+            full_name: nameMap[r.user_id] || 'Unknown'
         }));
 
         return NextResponse.json(result);
@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
         const { data: adj, error: aErr } = await supabase
             .from('adjustments')
             .insert({
-                salesperson_id: user_id,
+                user_id: user_id,
                 amount: parseFloat(amount),
                 reason,
                 type,
