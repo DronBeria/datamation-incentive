@@ -109,7 +109,7 @@ async function execRun(sql: string): Promise<{ lastInsertRowid: string | number 
 export const db = {
   prepare: (query: string) => ({
     all: async (...params: unknown[]): Promise<any[]> => {
-      const sql = formatQuery(query, params);
+      const sql = formatQuery(query.trim(), params);
       try {
         const rows = await execAll(sql);
         console.log(`[DB] all() -> ${rows.length} rows`);
@@ -120,7 +120,7 @@ export const db = {
       }
     },
     get: async (...params: unknown[]): Promise<any | null> => {
-      const sql = formatQuery(query, params);
+      const sql = formatQuery(query.trim(), params);
       try {
         const rows = await execAll(sql);
         const row = rows[0] ?? null;
