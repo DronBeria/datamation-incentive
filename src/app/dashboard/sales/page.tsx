@@ -90,11 +90,11 @@ export default function SalesPage() {
 
   useEffect(() => {
     fetchLogs();
-    fetch("/api/users")
+    fetch("/api/users?role=salesperson")
       .then(async r => {
         if (!r.ok) throw new Error();
         const d = await r.json();
-        if (Array.isArray(d)) setUsers(d.filter((u: any) => u.role === "salesperson"));
+        if (Array.isArray(d)) setUsers(d);
       })
       .catch(() => { });
 

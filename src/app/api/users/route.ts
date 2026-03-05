@@ -15,13 +15,41 @@ function getSupabase() {
   );
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    const url = new URL(req.url);
+    const roleParam = url.searchParams.get("role");
+
     const supabase = getSupabase();
     const userRole = (session.role || "").toLowerCase().trim();
+
+    // Special path: when requesting salespersons for dropdowns (e.g. Log Sale),
+    // admin/manager/accounts can see ALL active salespersons regardless of hierarchy
+    if (roleParam === "salesperson" && ["admin", "manager", "accounts"].includes(userRole)) {
+      let query = supabase
+        .from('users')
+        .select(`
+          id, full_name, email, department, is_active, role_id,
+          role:roles(name)
+        `)
+        .eq('is_active', true)
+        .order('full_name', { ascending: true });
+
+      const { data: salespersons, error: spErr } = await query;
+      if (spErr) throw spErr;
+
+      const result = (salespersons || [])
+        .filter((u: any) => (u.role?.name || '').toLowerCase() === 'salesperson')
+        .map((u: any) => ({
+          ...u,
+          role: u.role?.name || 'salesperson',
+        }));
+
+      return NextResponse.json(result);
+    }
 
     let { data: users, error } = await supabase
       .from('users')

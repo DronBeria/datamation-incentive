@@ -624,6 +624,56 @@ function BatchesContent() {
                         </TableBody>
                       </Table>
                     </div>
+                    {/* Inline Action Buttons */}
+                    <div className="flex items-center gap-3 mt-4">
+                      <Button
+                        variant="outline"
+                        onClick={(e) => { e.stopPropagation(); setSelectedBatch(batch); }}
+                        className="h-10 px-5 rounded-xl text-xs font-semibold border-slate-200 hover:border-blue-400 hover:text-blue-600 transition-all"
+                      >
+                        View Full Details
+                      </Button>
+                      {batch.status === "draft" && ["admin", "manager"].includes(user?.role || "") && (
+                        <Button
+                          onClick={(e) => { e.stopPropagation(); handleAction(batch.id, "submit"); }}
+                          disabled={actionLoading === batch.id}
+                          className="h-10 px-5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold text-xs shadow-sm"
+                        >
+                          {actionLoading === batch.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit for Approval"}
+                        </Button>
+                      )}
+                      {batch.status === "pending_approval" && user?.role === "admin" && (
+                        <>
+                          <Button
+                            onClick={(e) => { e.stopPropagation(); handleAction(batch.id, "approve"); }}
+                            disabled={actionLoading === batch.id}
+                            className="h-10 px-5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold text-xs shadow-sm"
+                          >
+                            {actionLoading === batch.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Approve"}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const reason = window.prompt("Reason for rejection:");
+                              if (reason) handleAction(batch.id, "reject", reason);
+                            }}
+                            disabled={actionLoading === batch.id}
+                            className="h-10 px-5 border-rose-200 text-rose-600 hover:bg-rose-50 rounded-xl font-semibold text-xs"
+                          >
+                            Reject
+                          </Button>
+                        </>
+                      )}
+                      {batch.status === "approved" && ["accounts", "admin"].includes(user?.role || "") && (
+                        <Button
+                          onClick={(e) => { e.stopPropagation(); setSelectedBatch(batch); }}
+                          className="h-10 px-5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold text-xs shadow-sm flex items-center gap-2"
+                        >
+                          <Zap className="h-3.5 w-3.5" /> Process Payment
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 )}
               </Card>
