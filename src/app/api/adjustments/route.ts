@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
 
         let query = supabase
             .from('adjustments')
-            .select('*, salesperson:users!salesperson_id(full_name)')
+            .select('*')
             .order('created_at', { ascending: false });
 
         const role = (session.role || "").toLowerCase();
@@ -37,9 +37,22 @@ export async function GET(req: NextRequest) {
         const { data: rows, error } = await query;
         if (error) throw error;
 
+        // Resolve salesperson names separately to avoid FK join issues
+        const spIds = [...new Set((rows || []).map(r => r.salesperson_id).filter(Boolean))];
+        let nameMap: Record<string, string> = {};
+        if (spIds.length > 0) {
+            const { data: users } = await supabase
+                .from('users')
+                .select('id, full_name')
+                .in('id', spIds);
+            if (users) {
+                users.forEach(u => { nameMap[u.id] = u.full_name; });
+            }
+        }
+
         const result = (rows || []).map(r => ({
             ...r,
-            full_name: r.salesperson?.full_name || 'Unknown'
+            full_name: nameMap[r.salesperson_id] || 'Unknown'
         }));
 
         return NextResponse.json(result);
