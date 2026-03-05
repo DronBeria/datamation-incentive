@@ -5,6 +5,8 @@ import bcrypt from "bcryptjs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  if (process.env.NODE_ENV === "production") return new NextResponse("Not found", { status: 404 });
+
     try {
         const password = "Datamation@2026";
         const email = "admin@datamation.com";
@@ -85,3 +87,4 @@ END $$;`).run();
         return NextResponse.json({ error: e.message }, { status: 500 });
     }
 }
+

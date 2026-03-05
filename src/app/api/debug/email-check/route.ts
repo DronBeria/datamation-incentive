@@ -5,6 +5,8 @@ import { db } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
+  if (process.env.NODE_ENV === "production") return new NextResponse("Not found", { status: 404 });
+
     const envCheck = {
         SMTP_USER: !!process.env.SMTP_USER,
         SMTP_PASS: !!process.env.SMTP_PASS,
@@ -49,3 +51,4 @@ export async function GET(req: NextRequest) {
         }, { status: 500 });
     }
 }
+

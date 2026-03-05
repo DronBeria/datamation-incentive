@@ -4,6 +4,8 @@ import { supabase } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
+  if (process.env.NODE_ENV === "production") return new NextResponse("Not found", { status: 404 });
+
   try {
     const results = [];
 
@@ -108,3 +110,4 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+

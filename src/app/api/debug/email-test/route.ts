@@ -4,6 +4,8 @@ import { sendWelcomeEmail, sendIncentiveUpdate, sendBatchApprovedEmail } from "@
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
+  if (process.env.NODE_ENV === "production") return new NextResponse("Not found", { status: 404 });
+
     const targetTo = req.nextUrl.searchParams.get("to") || "delivered@resend.dev";
     const template = req.nextUrl.searchParams.get("template") || "welcome";
 
@@ -38,3 +40,4 @@ export async function GET(req: NextRequest) {
         }, { status: 500 });
     }
 }
+

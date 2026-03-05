@@ -50,12 +50,22 @@ export default function NotificationsPage() {
   };
 
   const markOneRead = async (id: number) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: 1 } : n));
+    try {
+      await fetch(`/api/notifications/${id}`, { method: "PATCH" });
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: 1 } : n));
+    } catch {
+      toast.error("Failed to update notification");
+    }
   };
 
-  const deleteNotif = (id: number) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
-    toast.success("Alert purged");
+  const deleteNotif = async (id: number) => {
+    try {
+      await fetch(`/api/notifications/${id}`, { method: "DELETE" });
+      setNotifications(prev => prev.filter(n => n.id !== id));
+      toast.success("Alert purged");
+    } catch {
+      toast.error("Failed to delete notification");
+    }
   };
 
   const handleExportCSV = () => {

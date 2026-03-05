@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
+  if (process.env.NODE_ENV === "production") return new NextResponse("Not found", { status: 404 });
+
     try {
         // Verify admin users exist
         const admins = await db.prepare("SELECT id, email, full_name, is_active, approval_status FROM users WHERE role_id = 1").all() as any[];
@@ -23,3 +25,4 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 }
+

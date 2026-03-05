@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
+  if (process.env.NODE_ENV === "production") return new NextResponse("Not found", { status: 404 });
+
     const session = await getSession();
     if (!session || session.role !== "admin") {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -79,3 +81,4 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: err.message }, { status: 500 });
     }
 }
+
