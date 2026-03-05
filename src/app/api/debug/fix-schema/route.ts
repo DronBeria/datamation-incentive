@@ -79,7 +79,22 @@ export async function GET(req: NextRequest) {
     });
     results.push({ action: 'add_adj_reference_number', success: !errAdjRef, error: errAdjRef?.message });
 
-    // 7. Reload Schema Cache
+    // 7. Add reset_token and reset_token_expiry to users if missing
+    const { error: errReset } = await supabase.rpc('exec_sql', {
+      sql_query: `
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='reset_token') THEN
+            ALTER TABLE public.users ADD COLUMN reset_token TEXT DEFAULT NULL;
+          END IF;
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='reset_token_expiry') THEN
+            ALTER TABLE public.users ADD COLUMN reset_token_expiry TIMESTAMPTZ DEFAULT NULL;
+          END IF;
+        END $$;
+      `
+    });
+    results.push({ action: 'add_reset_columns', success: !errReset, error: errReset?.message });
+
+    // 8. Reload Schema Cache
     const { error: errReload } = await supabase.rpc('exec_sql', {
       sql_query: "NOTIFY pgrst, 'reload schema';"
     });
