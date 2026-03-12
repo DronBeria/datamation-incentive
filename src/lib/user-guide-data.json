@@ -5,15 +5,15 @@
         "features": [
             {
                 "title": "Incentive Schemes (The Logic Engine)",
-                "usage": "Navigate to 'Schemes'. Here you define how numbers become money. You can create four types of formulas:\n1. **Percentage**: Straight % of sale. Best for high-margin simple products.\n2. **Tiered Bonus**: Extra % after crossing a target. Drives volume.\n3. **Qty Threshold**: Flat bonus after X units sold. Rewards frequency.\n4. **Fixed Per Unit**: Constant ₹ amount. Simplest model.",
-                "tips": "Important: Schemes define the math. Staff must be 'linked' to a scheme to start earning.",
-                "what_not_to_do": "Do not delete a scheme if it has active users; use 'Archive' or update the end date instead."
+                "usage": "Schemes are the mathematical DNA of the system. You can configure:\n1. **Percentage**: (Sale Value * Rate). Ideal for standard sales.\n2. **Tiered Based**: If (Sale >= Threshold) then (Sale * Bonus Rate) else (Sale * Base Rate). Used to incentivize high-ticket deals.\n3. **Fixed Per Qty**: (Quantity * Rate). Best for volume-based commodities.\n4. **Quantity Threshold**: If (Qty >= Threshold) then (Qty * Bonus Rate) else (Qty * Base Rate). Rewards multi-unit orders.",
+                "tips": "Pro Tip: Always set 'Start Date' and 'End Date' correctly. The system uses the Sale Date to match the correct scheme version.",
+                "what_not_to_do": "Restriction: Never edit a scheme's base logic (e.g., changing it from % to Tiered) while users are attached. Create a NEW scheme instead."
             },
             {
-                "title": "User Control & Permissions",
-                "usage": "Review new signups in 'Approvals'. Assign them one of four roles: Admin (Governance), Manager (Team Ops), Accounts (Finance), or Salesperson (Execution).",
-                "tips": "Assign a Manager to every Salesperson to enable hierarchical commission overrides.",
-                "what_not_to_do": "Never share login credentials; the Audit Log tracks specific user IDs for every change."
+                "title": "User Approvals & Role Mapping",
+                "usage": "New users remain in 'Pending' until an Admin approves their profile. You must assign them a Role and, if they are Salespeople, a Manager and an Active Scheme.",
+                "tips": "Pro Tip: Use the 'Department' field to filter reports later in the Analytics dashboard.",
+                "what_not_to_do": "Restriction: Do not leave users without a Manager assignment; this breaks the hierarchical approval workflow."
             }
         ]
     },
@@ -22,16 +22,16 @@
         "description": "Managers bridge the gap between sales and finance, ensuring accuracy and performance.",
         "features": [
             {
-                "title": "Sales Review & Dispatch",
-                "usage": "When your team logs a sale, it enters 'Pending Review'. You must verify the client name and deal value. If correct, approve it to move it to 'Earned' status.",
-                "tips": "Use the 'Flag' feature for disputes. This locks the commission until the conflict is resolved.",
-                "what_not_to_do": "Do not approve sales without client verification; once 'Earned', they are ready for payment batching."
+                "title": "The Sales Audit Log (Logs)",
+                "usage": "Every sale logged by your team appears in the Audit Log. Each log has a unique 'SL-' Reference. You can:\n1. **Approve**: Moves the status to 'Earned' for payout.\n2. **Reject**: Sends it back with notes for correction.\n3. **Flag**: Suspends the log for dispute resolution.",
+                "tips": "Pro Tip: Filter by 'Pending Review' every morning to keep the payout pipeline moving.",
+                "what_not_to_do": "Restriction: Do not approve logs with missing product descriptions; finance will reject the entire batch later."
             },
             {
-                "title": "Batch Settlement Creation",
-                "usage": "Group multiple 'Earned' items into a 'Payout Batch'. This creates a unique reference ID for the collection. Move the batch from 'Draft' to 'Submitted' for finance processing.",
-                "tips": "Create batches weekly to keep payout timelines predictable.",
-                "what_not_to_do": "Do not add disputed or flagged items to a batch; they will cause the entire batch to fail audit."
+                "title": "Batch Settlement Construction",
+                "usage": "Batches are 'Containers' for payments. You select 'Earned' logs and group them into a Batch (BT- Reference). A batch moves from Draft -> Submitted -> Paid.",
+                "tips": "Pro Tip: Give batches descriptive names like 'North-Region-Q1-Payout' for better tracking.",
+                "what_not_to_do": "Restriction: Do not delete a batch once it has been 'Submitted' to Finance. Use 'Return to Draft' if changes are needed."
             }
         ]
     },
@@ -40,16 +40,16 @@
         "description": "The front-line users who drive revenue and track their financial growth.",
         "features": [
             {
-                "title": "Dynamic Sales Logging",
-                "usage": "Input Client Name, Product, and Deal Value. The system automatically fetches your active 'Scheme' and shows your estimated earnings instantly.",
-                "tips": "Check your 'Reference ID' for every sale to track individual deals in payroll.",
-                "what_not_to_do": "Do not log duplicate entries for the same client; use the 'Sale Date' to differentiate installments."
+                "title": "Real-time Sales Logging",
+                "usage": "Enter deal details. The system performs 'On-the-fly' calculation based on your assigned scheme. You can see your predicted commission BEFORE you hit submit.",
+                "tips": "Pro Tip: Accurately enter the 'Sale Date'. If the date falls outside your scheme window, the system uses a 5% fallback rate.",
+                "what_not_to_do": "Restriction: Do not log sales for clients that haven't signed a contract. The 'Notes' field should contain invoice numbers."
             },
             {
-                "title": "Performance Tracking",
-                "usage": "Use the Dashboard to see your Monthly Target progress. The visuals show how much more you need to sell to reach the next bonus tier.",
-                "tips": "Review your 'Rejected' logs to see manager feedback and corrective actions.",
-                "what_not_to_do": "Avoid logging approximate deal values; commission is calculated on the exact decimal entry."
+                "title": "Earning Transparency",
+                "usage": "Track your 'Paid' vs 'Pending' commissions. The dashboard shows a 'Target Gauge' indicating how close you are to your next bonus threshold.",
+                "tips": "Pro Tip: Export your personal ledger to PDF monthly for your own financial records.",
+                "what_not_to_do": "Restriction: Do not try to edit a sale once it has been 'Approved' by a manager. Contact them for adjustments."
             }
         ]
     },
@@ -58,22 +58,28 @@
         "description": "Responsible for final verification of settlements and disbursement of funds.",
         "features": [
             {
-                "title": "The Batch Lifecycle",
-                "usage": "Finance accesses 'Approved' batches only. Review the 'Total Batch Amount'. Once funds are disbursed via bank transfer, mark the batch as 'Paid' in the system.",
-                "tips": "Use the 'Payment Reference' field to link system records with bank transaction IDs.",
-                "what_not_to_do": "Do not mark a batch as 'Paid' if individual items are still disputed."
+                "title": "Financial Batch Disbursement",
+                "usage": "Accounts staff only see batches that are 'Submitted' or 'Approved'. Verify the bank details, process the transfer, and then update the batch status to 'Paid'.",
+                "tips": "Pro Tip: Always cross-reference the Batch Total with your bank's 'Transaction Success' report.",
+                "what_not_to_do": "Restriction: Do not mark a batch as 'Paid' without attaching a bank transaction reference ID in the system notes."
             }
         ]
     },
     {
-        "role": "System Concepts (Global)",
-        "description": "Understanding the logic that keeps PayoutPower professional and audit-ready.",
+        "role": "System Architecture (Core Concepts)",
+        "description": "Technical logic that ensures PayoutPower remains a professional financial tool.",
         "features": [
             {
-                "title": "Reference Serial Numbers",
-                "usage": "Every entry has a unique ID:\n1. **Sales (SL-YYYYMMDD-XXXX)**: Tracks the life of a single deal.\n2. **Batches (BT-YYYYMMDD-XXXX)**: Tracks a group of settlements.",
-                "tips": "Use these IDs in internal emails for instant traceability.",
-                "what_not_to_do": "Do not treat the ID as just a number; it is a permanent legal identifier in the system database."
+                "title": "Professional Reference Identifiers",
+                "usage": "The system uses two permanent ID types:\n1. **SL-YYYYMMDD-XXXX**: Sales Log IDs. Unique for every individual deal.\n2. **BT-YYYYMMDD-XXXX**: Batch IDs. Unique for every payment collection.",
+                "tips": "Pro Tip: These IDs are searchable. You can type an SL or BT code into any search bar to find the exact record.",
+                "what_not_to_do": "Restriction: Never treat these IDs as optional. They are the 'DNA' of the system's audit trail."
+            },
+            {
+                "title": "The Commission Matrix (Schemas)",
+                "usage": "Schemas (Incentive Schemes) define the math. You can create multiple schemas for different roles or products. A schema can be 'Fixed' (constant) or 'Dynamic' (threshold-based).",
+                "tips": "Pro Tip: Use 'Tiered' schemas to push salespeople toward higher-value deals.",
+                "what_not_to_do": "Restriction: Avoid creating overlapping schemas for the same user; the system will prioritize the most recently created one."
             }
         ]
     }

@@ -54,6 +54,15 @@ export default function LoginPage() {
   const [quickUsers, setQuickUsers] = useState<any[]>([]);
 
   useEffect(() => {
+    if (showGuide) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [showGuide]);
+
+  useEffect(() => {
     if (!loading && user) router.push("/dashboard");
     // Fetch dynamic quick logins with cache buster
     fetch(`/api/auth/quick-logins?t=${Date.now()}`)
@@ -259,49 +268,68 @@ export default function LoginPage() {
 
         {/* User Guide Trigger */}
         <div className="relative z-10">
-          <Dialog open={showGuide} onOpenChange={setShowGuide}>
-            <DialogTrigger asChild>
-              <Button
-                variant="outline"
-                className="group h-11 px-6 rounded-xl bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs transition-all flex items-center gap-2"
-              >
-                <HelpCircle className="h-4 w-4 text-indigo-400 group-hover:scale-110 transition-transform" />
-                Open User Guide
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-[1200px] w-[98vw] h-[92vh] p-0 overflow-hidden border-none shadow-2xl bg-white text-slate-900 rounded-3xl">
-              <div className="flex flex-col h-full bg-slate-50/30">
-                {/* ── Header ── */}
-                <div className="px-10 py-8 bg-white border-b border-slate-100 flex items-center justify-between shrink-0">
-                  <div className="flex items-center gap-6">
-                    <div className="h-14 w-14 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-100">
-                      <HelpCircle className="h-7 w-7 text-white" />
-                    </div>
-                    <div>
-                      <DialogTitle className="text-3xl font-black text-slate-900 tracking-tight">System Documentation</DialogTitle>
-                      <p className="text-sm text-slate-500 font-semibold mt-0.5">Comprehensive guide to PayoutPower v2.0</p>
-                    </div>
+          <Button
+            variant="outline"
+            onClick={() => setShowGuide(true)}
+            className="group h-11 px-6 rounded-xl bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs transition-all flex items-center gap-2"
+          >
+            <HelpCircle className="h-4 w-4 text-indigo-400 group-hover:scale-110 transition-transform" />
+            Open Full User Guide
+          </Button>
+
+          {showGuide && (
+            <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-xl flex flex-col items-center justify-start overflow-hidden">
+              {/* Immersive Background */}
+              <div className="absolute inset-0 bg-[#f1f3f7]" />
+
+              {/* Fixed Header */}
+              <div className="relative w-full bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-sm z-20">
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-100">
+                    <HelpCircle className="h-5 w-5 text-white" />
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Button
-                      onClick={downloadGuide}
-                      className="h-11 px-6 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-xl transition-all flex items-center gap-2"
-                    >
-                      <Download className="h-4 w-4" /> Download Manual (PDF)
-                    </Button>
+                  <div>
+                    <h2 className="text-xl font-black text-slate-900 tracking-tight leading-none">System Intelligence Manual</h2>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Documentation v2.0 • Immersive Mode</p>
                   </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-10 space-y-16">
-                  {/* ── Visual Workflow Diagram ── */}
-                  <section className="space-y-8">
-                    <div className="flex items-center gap-3">
-                      <div className="h-1.5 w-8 bg-indigo-600 rounded-full" />
-                      <h3 className="text-sm font-black text-slate-400 uppercase tracking-[0.3em]">Lifecycle Workflow</h3>
+                <div className="flex items-center gap-4">
+                  <Button
+                    onClick={downloadGuide}
+                    variant="outline"
+                    className="h-9 px-4 rounded-lg border-slate-200 text-slate-600 text-[11px] font-bold hover:bg-slate-50 flex items-center gap-2"
+                  >
+                    <Download className="h-3.5 w-3.5" /> Download PDF
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => setShowGuide(false)}
+                    className="h-9 w-9 p-0 rounded-lg hover:bg-slate-100 text-slate-500"
+                  >
+                    <X className="h-5 w-5" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Scrollable Container */}
+              <div className="relative w-full flex-1 overflow-y-auto pt-10 pb-24 custom-scrollbar">
+                <div className="max-w-4xl mx-auto px-6">
+                  {/* Paper Content Wrapper */}
+                  <div className="bg-white rounded-[2rem] shadow-2xl shadow-slate-200/50 border border-slate-100 p-12 md:p-16 space-y-16">
+
+                    {/* Intro Section */}
+                    <div className="space-y-4">
+                      <Badge className="bg-indigo-50 text-indigo-600 border-indigo-100 px-3 py-1 font-black text-[10px] uppercase tracking-widest">Introduction</Badge>
+                      <h1 className="text-4xl font-black text-slate-900 tracking-tighter leading-[1.1]">The Incentive Engine Architecture.</h1>
+                      <p className="text-lg text-slate-500 font-medium leading-relaxed max-w-2xl">
+                        Welcome to PayoutPower. This system is designed for uncompromising financial accuracy. Below you will find detailed logic explanations for every module.
+                      </p>
                     </div>
 
-                    <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden">
-                      <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50/50 blur-3xl rounded-full -mr-32 -mt-32" />
+                    {/* ── Visual Workflow ── */}
+                    <section className="pt-8 border-t border-slate-50">
+                      <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.3em] mb-10">Commission Lifecycle Visualizer</h3>
                       <div className="relative flex flex-col md:flex-row items-center justify-between gap-8 py-4">
                         {[
                           { icon: Layout, label: "Log Sale", desc: "Staff logs deal", color: "blue" },
@@ -310,79 +338,90 @@ export default function LoginPage() {
                           { icon: CreditCard, label: "Disburse", desc: "Final Payout", color: "emerald" }
                         ].map((step, i) => (
                           <React.Fragment key={i}>
-                            <div className="flex flex-col items-center text-center gap-4 z-10">
-                              <div className={`h-16 w-16 rounded-2xl bg-${step.color}-50 border border-${step.color}-100 flex items-center justify-center text-${step.color}-600 shadow-sm`}>
+                            <div className="flex flex-col items-center text-center gap-4 z-10 w-32">
+                              <div className="h-16 w-16 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-600 shadow-sm">
                                 <step.icon className="h-8 w-8" />
                               </div>
                               <div>
-                                <p className="text-sm font-bold text-slate-900">{step.label}</p>
-                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{step.desc}</p>
+                                <p className="text-sm font-bold text-slate-900 leading-none">{step.label}</p>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-2">{step.desc}</p>
                               </div>
                             </div>
-                            {i < 3 && (
-                              <div className="hidden md:block flex-1 h-px bg-slate-100 relative">
-                                <ChevronRight className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
-                              </div>
-                            )}
+                            {i < 3 && <ChevronRight className="hidden md:block h-6 w-6 text-slate-200" />}
                           </React.Fragment>
                         ))}
                       </div>
-                    </div>
-                  </section>
+                    </section>
 
-                  {/* ── Feature Cards ── */}
-                  <div className="grid grid-cols-1 gap-12">
-                    {guideData.map((section: any, idx: number) => (
-                      <div key={idx} className="space-y-8">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                          <h3 className="text-xl font-black text-slate-900 tracking-tight">{section.role}</h3>
-                          <Badge variant="outline" className="px-3 py-1 text-[10px] font-bold text-indigo-600 border-indigo-100 bg-indigo-50/30 uppercase tracking-widest leading-none">
-                            Feature Set #{idx + 1}
-                          </Badge>
-                        </div>
+                    {/* ── Role Sections ── */}
+                    <div className="space-y-20 pt-10">
+                      {guideData.map((section: any, idx: number) => (
+                        <div key={idx} className="space-y-10 group">
+                          <div className="space-y-2">
+                            <h3 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-4">
+                              <span className="h-8 w-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-sm font-bold">{idx + 1}</span>
+                              {section.role}
+                            </h3>
+                            <p className="text-slate-500 font-medium text-base ml-12">{section.description}</p>
+                          </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                          {section.features.map((feature: any, fidx: number) => (
-                            <div key={fidx} className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-indigo-900/5 transition-all duration-500 flex flex-col gap-6 group">
-                              <div className="flex items-start justify-between">
-                                <div className="h-12 w-12 rounded-2xl bg-slate-50 flex items-center justify-center transition-all group-hover:bg-indigo-600 group-hover:text-white group-hover:shadow-lg group-hover:shadow-indigo-200">
-                                  <Info className="h-6 w-6" />
-                                </div>
-                                <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">0{fidx + 1}</span>
-                              </div>
-
-                              <div className="space-y-4">
-                                <h4 className="text-lg font-bold text-slate-900 tracking-tight leading-tight">{feature.title}</h4>
-
-                                <div className="space-y-3">
-                                  <p className="text-[11px] font-black text-slate-400 uppercase tracking-wider leading-none">How to use</p>
-                                  <p className="text-sm text-slate-600 leading-relaxed font-medium">
-                                    {feature.usage}
-                                  </p>
+                          <div className="grid grid-cols-1 gap-6 pl-12">
+                            {section.features.map((feature: any, fidx: number) => (
+                              <div key={fidx} className="bg-[#fcfdfe] p-8 rounded-[1.5rem] border border-slate-100 shadow-sm hover:border-indigo-100 transition-all duration-300 space-y-6">
+                                <div className="flex items-center justify-between">
+                                  <h4 className="text-lg font-bold text-slate-900 tracking-tight">{feature.title}</h4>
+                                  <Badge variant="outline" className="text-[9px] font-bold text-slate-400 border-slate-200">OP-0{fidx + 1}</Badge>
                                 </div>
 
-                                {feature.tips && (
-                                  <div className="mt-4 p-5 rounded-2xl bg-amber-50/50 border border-amber-100/50 flex gap-4">
-                                    <Lightbulb className="h-5 w-5 text-amber-500 shrink-0" />
-                                    <div>
-                                      <p className="text-[11px] font-black text-amber-600 uppercase tracking-wider leading-none mb-1">Manager Tip</p>
-                                      <p className="text-xs text-amber-700/80 font-semibold leading-relaxed">
-                                        {feature.tips}
-                                      </p>
+                                <div className="grid md:grid-cols-2 gap-8">
+                                  <div className="space-y-3">
+                                    <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest leading-none">Process & Logic</p>
+                                    <div className="text-sm text-slate-600 font-medium leading-[1.6] whitespace-pre-wrap">
+                                      {feature.usage}
                                     </div>
                                   </div>
-                                )}
+
+                                  <div className="space-y-6">
+                                    {feature.tips && (
+                                      <div className="p-5 rounded-2xl bg-indigo-50/50 border border-indigo-100/50 flex gap-4">
+                                        <Lightbulb className="h-5 w-5 text-indigo-600 shrink-0 mt-0.5" />
+                                        <div>
+                                          <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest leading-none mb-2">Expert Tip</p>
+                                          <p className="text-xs text-slate-700 font-semibold leading-relaxed">
+                                            {feature.tips}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {feature.what_not_to_do && (
+                                      <div className="p-5 rounded-2xl bg-rose-50/50 border border-rose-100/50 flex gap-4">
+                                        <AlertOctagon className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
+                                        <div>
+                                          <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest leading-none mb-2">Restricted Action</p>
+                                          <p className="text-xs text-rose-700 font-semibold leading-relaxed">
+                                            {feature.what_not_to_do}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+
+                    <div className="pt-20 border-t border-slate-50 text-center">
+                      <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.5em]">End of Documentation</p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </DialogContent>
-          </Dialog>
+            </div>
+          )}
         </div>
 
         {/* Bottom: Footer */}
