@@ -79,9 +79,24 @@ export function exportToPDF(title: string, columns: { key: string; label: string
     body: body,
     startY: 30,
     theme: 'grid',
-    styles: { fontSize: 8, cellPadding: 2 },
-    headStyles: { fillColor: [71, 85, 105], textColor: 255 },
-    alternateRowStyles: { fillColor: [248, 250, 252] },
+    styles: {
+      fontSize: 8,
+      cellPadding: 3,
+      overflow: 'linebreak',
+      halign: 'left',
+      textColor: [30, 41, 59]
+    },
+    headStyles: {
+      fillColor: [30, 41, 59],
+      textColor: 255,
+      fontStyle: 'bold',
+      fontSize: 8
+    },
+    alternateRowStyles: { fillColor: [250, 250, 250] },
+    columnStyles: {
+      amount: { halign: 'right', fontStyle: 'bold' },
+      total_amount: { halign: 'right', fontStyle: 'bold' }
+    }
   });
 
   doc.save(`${filename}_${new Date().toISOString().split("T")[0]}.pdf`);
@@ -92,16 +107,17 @@ export function downloadPDF(title: string, tables: { heading: string; columns: {
   // Generate printable HTML and open in new window for native PDF printing
   const styles = `
     <style>
-      @page { margin: 20mm; size: A4 landscape; }
-      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #1e293b; margin: 0; padding: 20px; }
-      h1 { font-size: 18px; margin: 0 0 4px; color: #0f172a; }
-      .meta { font-size: 11px; color: #64748b; margin-bottom: 24px; }
-      h2 { font-size: 14px; color: #334155; margin: 20px 0 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
-      table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 11px; }
-      th { background: #f1f5f9; color: #475569; font-weight: 600; text-align: left; padding: 6px 10px; border: 1px solid #e2e8f0; }
-      td { padding: 5px 10px; border: 1px solid #e2e8f0; }
-      tr:nth-child(even) { background: #f8fafc; }
-      .footer { margin-top: 30px; font-size: 10px; color: #94a3b8; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 10px; }
+      @page { margin: 15mm; size: A4 landscape; }
+      body { font-family: 'Courier New', Courier, monospace; color: #000; margin: 0; padding: 0; font-size: 10px; }
+      .container { padding: 20px; border: 1px solid #000; }
+      h1 { font-size: 16px; margin: 0 0 10px; text-transform: uppercase; border-bottom: 2px solid #000; padding-bottom: 5px; }
+      .meta { font-size: 9px; margin-bottom: 20px; font-weight: bold; }
+      h2 { font-size: 12px; margin: 15px 0 5px; text-transform: uppercase; background: #eee; padding: 4px 8px; }
+      table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+      th { border: 1px solid #000; padding: 6px; text-align: left; background: #fff; text-transform: uppercase; }
+      td { border: 1px solid #000; padding: 6px; }
+      .text-right { text-align: right; }
+      .footer { margin-top: 20px; font-size: 8px; text-align: center; border-top: 1px solid #ccc; padding-top: 5px; }
     </style>
   `;
 
@@ -114,7 +130,10 @@ export function downloadPDF(title: string, tables: { heading: string; columns: {
     html += `<h2>${tbl.heading}</h2>`;
     html += `<table><thead><tr>${tbl.columns.map((c) => `<th>${c.label}</th>`).join("")}</tr></thead><tbody>`;
     for (const row of tbl.data) {
-      html += `<tr>${tbl.columns.map((c) => `<td>${row[c.key] ?? "-"}</td>`).join("")}</tr>`;
+      html += `<tr>${tbl.columns.map((c) => {
+        const isNum = ['amount', 'deal_value', 'total_amount'].includes(c.key);
+        return `<td class="${isNum ? 'text-right' : ''}">${row[c.key] ?? "-"}</td>`;
+      }).join("")}</tr>`;
     }
     html += `</tbody></table>`;
   }

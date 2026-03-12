@@ -230,18 +230,18 @@ function BatchDetailModal({ batch, onClose, user, onAction, actionLoading }: any
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-40 p-1 rounded-xl shadow-lg border border-slate-100 bg-white">
-                <DropdownMenuItem onClick={() => exportToExcel(batch.items || [], `batch_${batch.id}`, [
+                <DropdownMenuItem onClick={() => exportToExcel(batch.items || [], `batch_${batch.reference_number || batch.id}`, [
                   { key: "salesperson_name", label: "Beneficiary" },
-                  { key: "client_name", label: "Client" },
+                  { key: "client_name", label: "Client / Description" },
                   { key: "amount", label: "Amount" },
                 ])} className="h-10 rounded-lg text-xs font-medium text-slate-600 cursor-pointer focus:bg-slate-50">
                   Excel Spreadsheet
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => downloadPDF(`Batch Report: ${batch.batch_name}`, [{
-                  heading: "Batch Details",
+                <DropdownMenuItem onClick={() => downloadPDF(`Batch Report: ${batch.batch_name} (${batch.reference_number || batch.id})`, [{
+                  heading: "Financial Breakdown",
                   columns: [
                     { key: "salesperson_name", label: "Beneficiary" },
-                    { key: "client_name", label: "Client" },
+                    { key: "client_name", label: "Client / Description" },
                     { key: "amount", label: "Amount" },
                   ],
                   data: batch.items || [],

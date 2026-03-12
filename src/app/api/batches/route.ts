@@ -118,10 +118,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Generate Batch Ref: BT_YYYYMMDD_SHORTNAME
+    // Generate Professional Batch Ref: BT-YYYYMMDD-XXXX
     const dateTag = new Date().toISOString().split('T')[0].replace(/-/g, "");
-    const batchShort = batch_name.substring(0, 4).toUpperCase().replace(/\s/g, "");
-    const batchRef = `BT_${dateTag}_${batchShort}`;
+    const randomTag = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const batchRef = `BT-${dateTag}-${randomTag}`;
 
     // 1. Create the Batch
     const { data: batch, error: bErr } = await supabase

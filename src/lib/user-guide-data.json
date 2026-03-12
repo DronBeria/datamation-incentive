@@ -1,61 +1,79 @@
 [
     {
-        "role": "Governance & Management (Admin/Manager)",
+        "role": "Governance & Global Configuration (Admin)",
+        "description": "Admins have total control over the system's economic logic, user access, and final settlement structures.",
         "features": [
             {
-                "title": "Configuring Commission Schemes",
-                "usage": "Navigate to the 'Schemes' dashboard. Click 'Create Scheme' to define new payout logic. Choose from: \n1. **Percentage**: Fixed % of deal value.\n2. **Tiered Bonus**: Percentage increase after revenue milestone.\n3. **Qty Threshold**: Flat bonus after selling X units.\n4. **Fixed Per Unit**: Constant amount for every unit sold.",
-                "tips": "Use the 'Max Cap' field to limit maximum payable commission per deal for risk management."
+                "title": "Incentive Schemes (The Logic Engine)",
+                "usage": "Navigate to 'Schemes'. Here you define how numbers become money. You can create four types of formulas:\n1. **Percentage**: Straight % of sale. Best for high-margin simple products.\n2. **Tiered Bonus**: Extra % after crossing a target. Drives volume.\n3. **Qty Threshold**: Flat bonus after X units sold. Rewards frequency.\n4. **Fixed Per Unit**: Constant ₹ amount. Simplest model.",
+                "tips": "Important: Schemes define the math. Staff must be 'linked' to a scheme to start earning.",
+                "what_not_to_do": "Do not delete a scheme if it has active users; use 'Archive' or update the end date instead."
             },
             {
-                "title": "Staff Onboarding & Approval",
-                "usage": "When new staff sign up, they appear in 'Pending Approvals'. Review their requested role and department. Once approved, assign them to a specific 'Commission Scheme' to activate their logging capabilities.",
-                "tips": "You can change a staff member's assigned scheme at any time to reflect promotions or policy changes."
-            },
-            {
-                "title": "Settlement Batching",
-                "usage": "In the 'Batches' section, select multiple 'Earned' commissions to create a Payout Batch. This locks the records for review. \n1. **Draft**: Initial collection.\n2. **Submit**: Move to manager review.\n3. **Approve**: Finalize for finance processing.",
-                "tips": "Draft batches can be edited or deleted if adjustments are needed before formal submission."
-            },
-            {
-                "title": "Financial Adjustments",
-                "usage": "Use the 'Adjustments' dashboard to add manual financial corrections like performance bonuses or equipment deductions. These are automatically included in the next commission batch for the salesperson.",
-                "tips": "Every adjustment requires a description for the audit trail."
+                "title": "User Control & Permissions",
+                "usage": "Review new signups in 'Approvals'. Assign them one of four roles: Admin (Governance), Manager (Team Ops), Accounts (Finance), or Salesperson (Execution).",
+                "tips": "Assign a Manager to every Salesperson to enable hierarchical commission overrides.",
+                "what_not_to_do": "Never share login credentials; the Audit Log tracks specific user IDs for every change."
             }
         ]
     },
     {
-        "role": "Sales Operations (Salespeople)",
+        "role": "Team Operations (Managers)",
+        "description": "Managers bridge the gap between sales and finance, ensuring accuracy and performance.",
         "features": [
             {
-                "title": "Logging New Sales",
-                "usage": "Click 'Log Sale' on your dashboard. Enter the Client Name, Product Details, and total Deal Value. The system immediately calculates your estimated commission based on your assigned active scheme.",
-                "tips": "Always double-check the deal value as it directly impacts your earned commission logic."
+                "title": "Sales Review & Dispatch",
+                "usage": "When your team logs a sale, it enters 'Pending Review'. You must verify the client name and deal value. If correct, approve it to move it to 'Earned' status.",
+                "tips": "Use the 'Flag' feature for disputes. This locks the commission until the conflict is resolved.",
+                "what_not_to_do": "Do not approve sales without client verification; once 'Earned', they are ready for payment batching."
             },
             {
-                "title": "Earnings Lifecycle Tracking",
-                "usage": "Monitor your deals through four stages:\n1. **Earned**: Logged and valid.\n2. **Batched**: Included in a pending payout.\n3. **Approved**: Finalized by management.\n4. **Paid**: Funds disbursed by finance.",
-                "tips": "Use the filters to see exactly which deals are pending payment."
-            },
-            {
-                "title": "Performance Analytics",
-                "usage": "The 'Overview' tab shows your Monthly Targets vs Achievement. Visual charts help you identify your best-performing products and revenue trends.",
-                "tips": "Watch the 'Target Gap' to see how many more sales are needed to hit your next tier bonus."
+                "title": "Batch Settlement Creation",
+                "usage": "Group multiple 'Earned' items into a 'Payout Batch'. This creates a unique reference ID for the collection. Move the batch from 'Draft' to 'Submitted' for finance processing.",
+                "tips": "Create batches weekly to keep payout timelines predictable.",
+                "what_not_to_do": "Do not add disputed or flagged items to a batch; they will cause the entire batch to fail audit."
             }
         ]
     },
     {
-        "role": "Financial Disbursement (Accounts)",
+        "role": "Sales Force Execution (Salespeople)",
+        "description": "The front-line users who drive revenue and track their financial growth.",
         "features": [
             {
-                "title": "Processing Payments",
-                "usage": "Finance users see an 'Approved' queue. Select a batch and click 'Process Payment'. You can mark the entire batch as paid or perform partial payments if specific deal verification is pending.",
-                "tips": "Marking as 'Paid' generates a unique transaction reference for the audit log."
+                "title": "Dynamic Sales Logging",
+                "usage": "Input Client Name, Product, and Deal Value. The system automatically fetches your active 'Scheme' and shows your estimated earnings instantly.",
+                "tips": "Check your 'Reference ID' for every sale to track individual deals in payroll.",
+                "what_not_to_do": "Do not log duplicate entries for the same client; use the 'Sale Date' to differentiate installments."
             },
             {
-                "title": "System Audit Registry",
-                "usage": "Access the global audit logs to view every state change (e.g., 'who changed a batch from Pending to Paid' and at what time).",
-                "tips": "Export these logs at the end of each month for external accounting compliance."
+                "title": "Performance Tracking",
+                "usage": "Use the Dashboard to see your Monthly Target progress. The visuals show how much more you need to sell to reach the next bonus tier.",
+                "tips": "Review your 'Rejected' logs to see manager feedback and corrective actions.",
+                "what_not_to_do": "Avoid logging approximate deal values; commission is calculated on the exact decimal entry."
+            }
+        ]
+    },
+    {
+        "role": "Audit & Disbursement (Accounts/Finance)",
+        "description": "Responsible for final verification of settlements and disbursement of funds.",
+        "features": [
+            {
+                "title": "The Batch Lifecycle",
+                "usage": "Finance accesses 'Approved' batches only. Review the 'Total Batch Amount'. Once funds are disbursed via bank transfer, mark the batch as 'Paid' in the system.",
+                "tips": "Use the 'Payment Reference' field to link system records with bank transaction IDs.",
+                "what_not_to_do": "Do not mark a batch as 'Paid' if individual items are still disputed."
+            }
+        ]
+    },
+    {
+        "role": "System Concepts (Global)",
+        "description": "Understanding the logic that keeps PayoutPower professional and audit-ready.",
+        "features": [
+            {
+                "title": "Reference Serial Numbers",
+                "usage": "Every entry has a unique ID:\n1. **Sales (SL-YYYYMMDD-XXXX)**: Tracks the life of a single deal.\n2. **Batches (BT-YYYYMMDD-XXXX)**: Tracks a group of settlements.",
+                "tips": "Use these IDs in internal emails for instant traceability.",
+                "what_not_to_do": "Do not treat the ID as just a number; it is a permanent legal identifier in the system database."
             }
         ]
     }

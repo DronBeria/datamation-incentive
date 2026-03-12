@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import {
   Loader2, ArrowLeft, Key, Eye, EyeOff, Zap,
   ShieldCheck, TrendingUp, Users, BarChart3, ArrowRight, HelpCircle, FileText, Download, X,
-  Layout, Target, Calculator, CreditCard, ChevronRight, Info, Lightbulb
+  Layout, Target, Calculator, CreditCard, ChevronRight, Info, Lightbulb, AlertOctagon
 } from "lucide-react";
 import {
   Dialog,
