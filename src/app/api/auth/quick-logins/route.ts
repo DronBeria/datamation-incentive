@@ -12,10 +12,6 @@ function getSupabase() {
 }
 
 export async function GET() {
-    // Disable quick logins in production
-    if (process.env.NODE_ENV === "production") {
-        return NextResponse.json([]);
-    }
 
     try {
         const supabase = getSupabase();
