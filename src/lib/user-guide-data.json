@@ -1,74 +1,61 @@
 [
     {
-        "role": "General Information",
+        "role": "Governance & Management (Admin/Manager)",
         "features": [
             {
-                "title": "Getting Started",
-                "description": "Welcome to the Incentive Management System. This platform automates commission tracking, performance analysis, and financial settlements."
+                "title": "Configuring Commission Schemes",
+                "usage": "Navigate to the 'Schemes' dashboard. Click 'Create Scheme' to define new payout logic. Choose from: \n1. **Percentage**: Fixed % of deal value.\n2. **Tiered Bonus**: Percentage increase after revenue milestone.\n3. **Qty Threshold**: Flat bonus after selling X units.\n4. **Fixed Per Unit**: Constant amount for every unit sold.",
+                "tips": "Use the 'Max Cap' field to limit maximum payable commission per deal for risk management."
             },
             {
-                "title": "Architecture & Security",
-                "description": "The system uses Next.js for the core interface, Supabase for data integrity, and role-based access control (RBAC) to ensure data isolation."
+                "title": "Staff Onboarding & Approval",
+                "usage": "When new staff sign up, they appear in 'Pending Approvals'. Review their requested role and department. Once approved, assign them to a specific 'Commission Scheme' to activate their logging capabilities.",
+                "tips": "You can change a staff member's assigned scheme at any time to reflect promotions or policy changes."
+            },
+            {
+                "title": "Settlement Batching",
+                "usage": "In the 'Batches' section, select multiple 'Earned' commissions to create a Payout Batch. This locks the records for review. \n1. **Draft**: Initial collection.\n2. **Submit**: Move to manager review.\n3. **Approve**: Finalize for finance processing.",
+                "tips": "Draft batches can be edited or deleted if adjustments are needed before formal submission."
+            },
+            {
+                "title": "Financial Adjustments",
+                "usage": "Use the 'Adjustments' dashboard to add manual financial corrections like performance bonuses or equipment deductions. These are automatically included in the next commission batch for the salesperson.",
+                "tips": "Every adjustment requires a description for the audit trail."
             }
         ]
     },
     {
-        "role": "Admin / Manager",
+        "role": "Sales Operations (Salespeople)",
         "features": [
             {
-                "title": "Commission Blueprinting",
-                "description": "Create and manage 'Schemes'. You can define Percentage, Tiered Bonus, or Fixed-per-unit logic. Use 'Soft Delete' to archive old logic without breaking history."
+                "title": "Logging New Sales",
+                "usage": "Click 'Log Sale' on your dashboard. Enter the Client Name, Product Details, and total Deal Value. The system immediately calculates your estimated commission based on your assigned active scheme.",
+                "tips": "Always double-check the deal value as it directly impacts your earned commission logic."
             },
             {
-                "title": "User Lifecycle",
-                "description": "Manage staff profiles and assign them to specific schemes. Approving a user allows them to start logging sales."
+                "title": "Earnings Lifecycle Tracking",
+                "usage": "Monitor your deals through four stages:\n1. **Earned**: Logged and valid.\n2. **Batched**: Included in a pending payout.\n3. **Approved**: Finalized by management.\n4. **Paid**: Funds disbursed by finance.",
+                "tips": "Use the filters to see exactly which deals are pending payment."
             },
             {
-                "title": "Batch Settlement",
-                "description": "Group earned commissions into 'Batches'. You can approve batches for payment or reject them with feedback if discrepancies are found."
+                "title": "Performance Analytics",
+                "usage": "The 'Overview' tab shows your Monthly Targets vs Achievement. Visual charts help you identify your best-performing products and revenue trends.",
+                "tips": "Watch the 'Target Gap' to see how many more sales are needed to hit your next tier bonus."
             }
         ]
     },
     {
-        "role": "Salesperson",
+        "role": "Financial Disbursement (Accounts)",
         "features": [
             {
-                "title": "Self-Logging Sales",
-                "description": "Log your daily sales directly. The system automatically calculates your commission based on your assigned scheme."
+                "title": "Processing Payments",
+                "usage": "Finance users see an 'Approved' queue. Select a batch and click 'Process Payment'. You can mark the entire batch as paid or perform partial payments if specific deal verification is pending.",
+                "tips": "Marking as 'Paid' generates a unique transaction reference for the audit log."
             },
             {
-                "title": "Performance Dashboard",
-                "description": "Track your targets, achieved sales, and total earnings in real-time. View your payout history and status of logged deals."
-            },
-            {
-                "title": "Adjustments Registry",
-                "description": "View performance bonuses or manual corrections (deductions) applied to your account by the management."
-            }
-        ]
-    },
-    {
-        "role": "Accounts / Finance",
-        "features": [
-            {
-                "title": "Disbursement Queue",
-                "description": "View batches that have been approved by the Admin. Execute partial or full payments and mark them as 'Paid'."
-            },
-            {
-                "title": "Financial Audit",
-                "description": "Every financial transition is logged. You can review the status of every deal from 'Earned' to 'Paid' with full reference numbers."
-            }
-        ]
-    },
-    {
-        "role": "System Maintenance",
-        "features": [
-            {
-                "title": "Audit Logs",
-                "description": "Every action (Login, Create, Update, Delete) is tracked to prevent fraud and ensure accountability."
-            },
-            {
-                "title": "Rate Limiting",
-                "description": "The system includes built-in protection against brute-force attacks and bot traffic."
+                "title": "System Audit Registry",
+                "usage": "Access the global audit logs to view every state change (e.g., 'who changed a batch from Pending to Paid' and at what time).",
+                "tips": "Export these logs at the end of each month for external accounting compliance."
             }
         ]
     }

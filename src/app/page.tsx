@@ -2,13 +2,15 @@
 
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import {
   Loader2, ArrowLeft, Key, Eye, EyeOff, Zap,
-  ShieldCheck, TrendingUp, Users, BarChart3, ArrowRight, HelpCircle, FileText, Download, X
+  ShieldCheck, TrendingUp, Users, BarChart3, ArrowRight, HelpCircle, FileText, Download, X,
+  Layout, Target, Calculator, CreditCard, ChevronRight, Info, Lightbulb
 } from "lucide-react";
 import {
   Dialog,
@@ -171,7 +173,7 @@ export default function LoginPage() {
 
     const formattedData = guideData.map(item => ({
       role: item.role,
-      features_list: item.features.map(f => `${f.title}: ${f.description}`).join("\n\n")
+      features_list: item.features.map(f => `${f.title}: ${f.usage}`).join("\n\n")
     }));
 
     exportToPDF("PayoutPower IMS User Guide", columns, formattedData, "payoutpower_user_guide");
@@ -267,48 +269,116 @@ export default function LoginPage() {
                 Open User Guide
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl w-[95vw] h-[85vh] p-0 overflow-hidden border border-slate-800 bg-slate-950 text-slate-200">
-              <div className="flex flex-col h-full">
-                <div className="px-8 py-6 border-b border-slate-900 bg-slate-900/50 flex items-center justify-between shrink-0">
-                  <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 rounded-xl bg-indigo-500/20 flex items-center justify-center border border-indigo-500/20">
-                      <HelpCircle className="h-5 w-5 text-indigo-400" />
+            <DialogContent className="max-w-[1200px] w-[98vw] h-[92vh] p-0 overflow-hidden border-none shadow-2xl bg-white text-slate-900 rounded-3xl">
+              <div className="flex flex-col h-full bg-slate-50/30">
+                {/* ── Header ── */}
+                <div className="px-10 py-8 bg-white border-b border-slate-100 flex items-center justify-between shrink-0">
+                  <div className="flex items-center gap-6">
+                    <div className="h-14 w-14 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-100">
+                      <HelpCircle className="h-7 w-7 text-white" />
                     </div>
                     <div>
-                      <DialogTitle className="text-xl font-black text-white tracking-tight">System Manual</DialogTitle>
-                      <p className="text-xs text-slate-500 font-medium">Feature directory & operating instructions</p>
+                      <DialogTitle className="text-3xl font-black text-slate-900 tracking-tight">System Documentation</DialogTitle>
+                      <p className="text-sm text-slate-500 font-semibold mt-0.5">Comprehensive guide to PayoutPower v2.0</p>
                     </div>
                   </div>
-                  <Button
-                    onClick={downloadGuide}
-                    className="h-9 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-lg shadow-indigo-900/40 flex items-center gap-2"
-                  >
-                    <Download className="h-3.5 w-3.5" /> Download PDF
-                  </Button>
+                  <div className="flex items-center gap-3">
+                    <Button
+                      onClick={downloadGuide}
+                      className="h-11 px-6 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-xl transition-all flex items-center gap-2"
+                    >
+                      <Download className="h-4 w-4" /> Download Manual (PDF)
+                    </Button>
+                  </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-8 space-y-10 custom-scrollbar">
-                  {guideData.map((section: any, idx: number) => (
-                    <div key={idx} className="space-y-4">
-                      <div className="flex items-center gap-3">
-                        <div className="h-0.5 w-6 bg-indigo-500" />
-                        <h3 className="text-sm font-black text-white uppercase tracking-[0.2em]">{section.role}</h3>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {section.features.map((feature: any, fidx: number) => (
-                          <div key={fidx} className="p-5 rounded-2xl bg-white/5 border border-white/5 hover:border-indigo-500/30 hover:bg-white/[0.07] transition-all group">
-                            <div className="flex items-center gap-3 mb-2">
-                              <div className="h-1.5 w-1.5 rounded-full bg-indigo-500 group-hover:scale-125 transition-transform" />
-                              <h4 className="font-bold text-slate-100 text-sm tracking-tight">{feature.title}</h4>
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-10 space-y-16">
+                  {/* ── Visual Workflow Diagram ── */}
+                  <section className="space-y-8">
+                    <div className="flex items-center gap-3">
+                      <div className="h-1.5 w-8 bg-indigo-600 rounded-full" />
+                      <h3 className="text-sm font-black text-slate-400 uppercase tracking-[0.3em]">Lifecycle Workflow</h3>
+                    </div>
+
+                    <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50/50 blur-3xl rounded-full -mr-32 -mt-32" />
+                      <div className="relative flex flex-col md:flex-row items-center justify-between gap-8 py-4">
+                        {[
+                          { icon: Layout, label: "Log Sale", desc: "Staff logs deal", color: "blue" },
+                          { icon: Target, label: "Verify", desc: "Automatic logic", color: "indigo" },
+                          { icon: Calculator, label: "Batch", desc: "Review pool", color: "purple" },
+                          { icon: CreditCard, label: "Disburse", desc: "Final Payout", color: "emerald" }
+                        ].map((step, i) => (
+                          <React.Fragment key={i}>
+                            <div className="flex flex-col items-center text-center gap-4 z-10">
+                              <div className={`h-16 w-16 rounded-2xl bg-${step.color}-50 border border-${step.color}-100 flex items-center justify-center text-${step.color}-600 shadow-sm`}>
+                                <step.icon className="h-8 w-8" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-bold text-slate-900">{step.label}</p>
+                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{step.desc}</p>
+                              </div>
                             </div>
-                            <p className="text-xs text-slate-400 font-medium leading-relaxed">
-                              {feature.description}
-                            </p>
-                          </div>
+                            {i < 3 && (
+                              <div className="hidden md:block flex-1 h-px bg-slate-100 relative">
+                                <ChevronRight className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+                              </div>
+                            )}
+                          </React.Fragment>
                         ))}
                       </div>
                     </div>
-                  ))}
+                  </section>
+
+                  {/* ── Feature Cards ── */}
+                  <div className="grid grid-cols-1 gap-12">
+                    {guideData.map((section: any, idx: number) => (
+                      <div key={idx} className="space-y-8">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                          <h3 className="text-xl font-black text-slate-900 tracking-tight">{section.role}</h3>
+                          <Badge variant="outline" className="px-3 py-1 text-[10px] font-bold text-indigo-600 border-indigo-100 bg-indigo-50/30 uppercase tracking-widest leading-none">
+                            Feature Set #{idx + 1}
+                          </Badge>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                          {section.features.map((feature: any, fidx: number) => (
+                            <div key={fidx} className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-indigo-900/5 transition-all duration-500 flex flex-col gap-6 group">
+                              <div className="flex items-start justify-between">
+                                <div className="h-12 w-12 rounded-2xl bg-slate-50 flex items-center justify-center transition-all group-hover:bg-indigo-600 group-hover:text-white group-hover:shadow-lg group-hover:shadow-indigo-200">
+                                  <Info className="h-6 w-6" />
+                                </div>
+                                <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">0{fidx + 1}</span>
+                              </div>
+
+                              <div className="space-y-4">
+                                <h4 className="text-lg font-bold text-slate-900 tracking-tight leading-tight">{feature.title}</h4>
+
+                                <div className="space-y-3">
+                                  <p className="text-[11px] font-black text-slate-400 uppercase tracking-wider leading-none">How to use</p>
+                                  <p className="text-sm text-slate-600 leading-relaxed font-medium">
+                                    {feature.usage}
+                                  </p>
+                                </div>
+
+                                {feature.tips && (
+                                  <div className="mt-4 p-5 rounded-2xl bg-amber-50/50 border border-amber-100/50 flex gap-4">
+                                    <Lightbulb className="h-5 w-5 text-amber-500 shrink-0" />
+                                    <div>
+                                      <p className="text-[11px] font-black text-amber-600 uppercase tracking-wider leading-none mb-1">Manager Tip</p>
+                                      <p className="text-xs text-amber-700/80 font-semibold leading-relaxed">
+                                        {feature.tips}
+                                      </p>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </DialogContent>
