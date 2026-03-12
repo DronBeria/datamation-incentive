@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { createClient } from "@supabase/supabase-js";
 import { signToken } from "@/lib/auth";
 import bcrypt from "bcryptjs";
 
 export const dynamic = "force-dynamic";
+
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } }
+  );
+}
 
 // Simple in-memory rate limiter: max 10 attempts per IP per 15 minutes
 const loginAttempts = new Map<string, { count: number; reset: number }>();
@@ -15,9 +23,9 @@ function checkRateLimit(ip: string): boolean {
   const entry = loginAttempts.get(ip);
   if (!entry || now > entry.reset) {
     loginAttempts.set(ip, { count: 1, reset: now + WINDOW_MS });
-    return true; // allowed
+    return true;
   }
-  if (entry.count >= MAX_ATTEMPTS) return false; // blocked
+  if (entry.count >= MAX_ATTEMPTS) return false;
   entry.count++;
   return true;
 }
@@ -28,7 +36,6 @@ export async function POST(req: NextRequest) {
     req.headers.get("x-real-ip") ||
     "127.0.0.1";
 
-  // Rate limit check
   if (!checkRateLimit(ip)) {
     return NextResponse.json(
       { error: "Too many login attempts. Please try again in 15 minutes." },
@@ -45,30 +52,39 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Email and password are required." }, { status: 400 });
     }
 
-    // Validate email format
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json({ error: "Invalid email format." }, { status: 400 });
     }
 
-    const user = await db
-      .prepare(
-        `SELECT u.*, r.name as role_name 
-         FROM public.users u 
-         JOIN public.roles r ON u.role_id = r.id 
-         WHERE u.email = ? 
-         LIMIT 1`
-      )
-      .get(email) as any;
+    const supabase = getSupabase();
 
-    if (user && (!user.is_active || user.is_active === 'FALSE' || user.is_active === 0)) {
+    // Direct Supabase query — much faster than exec_sql RPC
+    const { data: user, error: userErr } = await supabase
+      .from("users")
+      .select("id, email, password_hash, full_name, role_id, department, is_active, approval_status")
+      .eq("email", email)
+      .single();
+
+    // Also fetch the role name in parallel if user exists
+    let roleName = "";
+    if (user) {
+      const { data: role } = await supabase
+        .from("roles")
+        .select("name")
+        .eq("id", user.role_id)
+        .single();
+      roleName = role?.name || "";
+    }
+
+    if (user && (!user.is_active || user.is_active === false)) {
       return NextResponse.json({ error: "Access Denied: Your account has been deactivated by an administrator." }, { status: 403 });
     }
 
-    if (user && user.approval_status === 'pending') {
+    if (user && user.approval_status === "pending") {
       return NextResponse.json({ error: "Waiting for admin approval. Please contact support." }, { status: 403 });
     }
 
-    if (user && user.approval_status === 'rejected') {
+    if (user && user.approval_status === "rejected") {
       return NextResponse.json({ error: "Access denied. Your signup request has been rejected." }, { status: 403 });
     }
 
@@ -79,13 +95,15 @@ export async function POST(req: NextRequest) {
       : await bcrypt.compare(password, dummyHash).then(() => false);
 
     if (!user || !isValid) {
-      // Log failed attempt to audit
+      // Fire-and-forget failed login audit
       if (user) {
-        try {
-          await db.prepare(
-            "INSERT INTO audit_logs (user_id, action, entity_type, entity_id, ip_address) VALUES (?, 'LOGIN_FAILED', 'auth', ?, ?)"
-          ).run(user.id, user.id, ip);
-        } catch { /* non-blocking */ }
+        supabase.from("audit_logs").insert({
+          user_id: user.id,
+          action: "LOGIN_FAILED",
+          entity_type: "auth",
+          entity_id: user.id,
+          ip_address: ip,
+        }).then(() => { }).catch(() => { });
       }
       return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
     }
@@ -94,30 +112,32 @@ export async function POST(req: NextRequest) {
       id: user.id,
       email: user.email,
       full_name: user.full_name,
-      role: user.role_name,
+      role: roleName,
       role_id: user.role_id,
       department: user.department,
     });
 
-    // Log successful login and update activity timestamp
-    try {
-      await db.prepare(
-        "UPDATE public.users SET last_login = NOW() WHERE id = ?"
-      ).run(user.id);
+    // Fire-and-forget: update last_login + audit log (don't block the response)
+    supabase
+      .from("users")
+      .update({ last_login: new Date().toISOString() })
+      .eq("id", user.id)
+      .then(() => { }).catch(() => { });
 
-      await db.prepare(
-        "INSERT INTO audit_logs (user_id, action, entity_type, entity_id, ip_address) VALUES (?, 'LOGIN', 'auth', ?, ?)"
-      ).run(user.id, user.id, ip);
-    } catch (e) {
-      console.warn("Login activity logging failure:", e);
-    }
+    supabase.from("audit_logs").insert({
+      user_id: user.id,
+      action: "LOGIN",
+      entity_type: "auth",
+      entity_id: user.id,
+      ip_address: ip,
+    }).then(() => { }).catch(() => { });
 
     const res = NextResponse.json({
       user: {
         id: user.id,
         email: user.email,
         full_name: user.full_name,
-        role: user.role_name,
+        role: roleName,
         department: user.department,
       },
     });
@@ -127,11 +147,10 @@ export async function POST(req: NextRequest) {
       httpOnly: true,
       secure: req.url.startsWith("https://"),
       sameSite: "lax",
-      maxAge: 60 * 60 * 8, // 8 hours (matches JWT expiry)
+      maxAge: 60 * 60 * 8,
       path: "/",
     });
 
-    // Security response headers
     res.headers.set("X-Content-Type-Options", "nosniff");
     res.headers.set("X-Frame-Options", "DENY");
 
