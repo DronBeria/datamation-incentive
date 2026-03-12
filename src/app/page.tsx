@@ -277,482 +277,488 @@ export default function LoginPage() {
             Open Full User Guide
           </Button>
 
-          {showGuide && (
-            <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-xl flex flex-col items-center justify-start overflow-hidden">
-              {/* Immersive Background */}
-              <div className="absolute inset-0 bg-[#f1f3f7]" />
+        </Button>
+      </div>
 
-              {/* Fixed Header */}
-              <div className="relative w-full bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-sm z-20">
-                <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-100">
-                    <HelpCircle className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-black text-slate-900 tracking-tight leading-none">System Intelligence Manual</h2>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Documentation v2.0 • Immersive Mode</p>
-                  </div>
-                </div>
+      {/* Bottom: Footer */}
 
-                <div className="flex items-center gap-4">
-                  <Button
-                    onClick={downloadGuide}
-                    variant="outline"
-                    className="h-9 px-4 rounded-lg border-slate-200 text-slate-600 text-[11px] font-bold hover:bg-slate-50 flex items-center gap-2"
-                  >
-                    <Download className="h-3.5 w-3.5" /> Download PDF
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    onClick={() => setShowGuide(false)}
-                    className="h-9 w-9 p-0 rounded-lg hover:bg-slate-100 text-slate-500"
-                  >
-                    <X className="h-5 w-5" />
-                  </Button>
-                </div>
+      {/* Bottom: Footer */}
+      <div className="relative z-10 flex items-center justify-between">
+        <p className="text-[10px] text-slate-700 font-bold uppercase tracking-[0.3em]">© 2026 PayoutPower IMS</p>
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] text-slate-700 font-semibold">Secured by</span>
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/5 border border-white/10">
+            <ShieldCheck className="h-3 w-3 text-slate-500" />
+            <span className="text-[10px] font-bold text-slate-500">JWT + RBAC</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+      {/* ── RIGHT PANEL ── */ }
+  <div className="flex-1 flex items-center justify-center px-6 bg-[#f8f9fc] relative overflow-hidden">
+    {/* Subtle pattern */}
+    <div className="absolute inset-0 pointer-events-none opacity-[0.025]"
+      style={{ backgroundImage: `radial-gradient(circle, #000 1px, transparent 1px)`, backgroundSize: '20px 20px' }} />
+
+    <div className="w-full max-w-[400px] relative z-10">
+      {/* Mobile brand */}
+      <div className="lg:hidden flex items-center gap-2.5 mb-10">
+        <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+          <Zap className="h-4 w-4 text-white fill-white" />
+        </div>
+        <span className="text-lg font-bold text-slate-900 tracking-tight">Payout<span className="text-indigo-600">Power</span></span>
+      </div>
+
+      {/* ── LOGIN FORM ── */}
+      {view === "login" && (
+        <div className="space-y-8">
+          <div>
+            <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-2">Secure Sign In</p>
+            <h2 className="text-3xl font-black text-slate-900 tracking-tight">Welcome back.</h2>
+            <p className="text-slate-500 text-sm mt-1.5 font-medium">Enter your credentials to access your workspace.</p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-5">
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Work Email</label>
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@company.com"
+                required
+                autoComplete="email"
+                className="h-12 border-slate-200 bg-white rounded-xl px-4 text-slate-900 font-medium placeholder:text-slate-300 focus-visible:ring-indigo-500 focus-visible:border-indigo-400 transition-all shadow-sm"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Password</label>
+                <button
+                  type="button"
+                  onClick={() => setView("forgot")}
+                  className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 transition-colors"
+                >
+                  Forgot password?
+                </button>
+              </div>
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  autoComplete="current-password"
+                  className="h-12 border-slate-200 bg-white rounded-xl px-4 pr-11 text-slate-900 font-medium placeholder:text-slate-300 focus-visible:ring-indigo-500 focus-visible:border-indigo-400 transition-all shadow-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={submitting}
+              className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+            >
+              {submitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>Sign In <ArrowRight className="h-3.5 w-3.5" /></>
+              )}
+            </Button>
+
+            <div className="text-center pt-2">
+              <p className="text-xs text-slate-500 font-medium">
+                New to the platform?{" "}
+                <button
+                  type="button"
+                  onClick={() => setView("signup")}
+                  className="font-bold text-indigo-600 hover:text-indigo-700 underline-offset-4 hover:underline"
+                >
+                  Create an account
+                </button>
+              </p>
+            </div>
+          </form>
+
+          {/* Quick login nodes */}
+          <div>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="h-px flex-1 bg-slate-200" />
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Dev Quick Access</span>
+              <div className="h-px flex-1 bg-slate-200" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {[...quickUsers].map((u) => (
+                <button
+                  key={u.email}
+                  onClick={() => quickLogin(u.email)}
+                  className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all active:scale-[0.98] hover:shadow-md ${ROLE_COLORS[u.label] || "text-slate-400 bg-slate-500/10 border-slate-500/20"}`}
+                >
+                  <div className="flex items-center justify-between w-full mb-1">
+                    <span className="text-[9px] font-bold uppercase tracking-widest opacity-70">{u.label}</span>
+                    <div className="h-1.5 w-1.5 rounded-full bg-current opacity-40 animate-pulse" />
+                  </div>
+                  <span className="text-xs font-bold truncate w-full leading-tight">{u.full_name || 'System User'}</span>
+                  <span className="text-[10px] opacity-60 truncate w-full font-medium">{u.email}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── FORGOT PASSWORD ── */}
+      {view === "forgot" && (
+        <div className="space-y-8">
+          <button
+            onClick={() => setView("login")}
+            className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-all group text-sm font-medium"
+          >
+            <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
+            Back to sign in
+          </button>
+
+          <div>
+            <div className="h-11 w-11 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center mb-5">
+              <Key className="h-5 w-5 text-indigo-600" />
+            </div>
+            <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-2">Account Recovery</p>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Reset password.</h2>
+            <p className="text-slate-500 text-sm mt-1.5 font-medium leading-relaxed">
+              Enter your email address and we'll send you a reset link.
+            </p>
+          </div>
+
+          <form onSubmit={handleForgot} className="space-y-5">
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Email Address</label>
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@company.com"
+                required
+                className="h-12 border-slate-200 bg-white rounded-xl px-4 font-medium placeholder:text-slate-300 focus-visible:ring-indigo-500 shadow-sm"
+              />
+            </div>
+            <Button
+              type="submit"
+              disabled={submitting}
+              className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-200 transition-all active:scale-[0.98]"
+            >
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send Reset Link"}
+            </Button>
+          </form>
+        </div>
+      )}
+
+      {/* ── RESET PASSWORD ── */}
+      {view === "reset" && (
+        <div className="space-y-8">
+          <div>
+            <div className="h-11 w-11 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center mb-5">
+              <ShieldCheck className="h-5 w-5 text-emerald-600" />
+            </div>
+            <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest mb-2">New Password</p>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Set new password.</h2>
+            <p className="text-slate-500 text-sm mt-1.5 font-medium">Choose a strong password (min. 8 characters).</p>
+          </div>
+
+          <form onSubmit={handleReset} className="space-y-5">
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Reset Token</label>
+              <Input
+                type="text"
+                value={resetToken}
+                readOnly
+                className="h-12 bg-slate-100 border-slate-200 text-slate-500 font-mono text-[11px] rounded-xl px-4"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">New Password</label>
+              <div className="relative">
+                <Input
+                  type={showNewPassword ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Min. 8 characters"
+                  required
+                  className="h-12 border-slate-200 bg-white rounded-xl px-4 pr-11 font-medium placeholder:text-slate-300 focus-visible:ring-emerald-500 shadow-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors"
+                >
+                  {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+            <Button
+              type="submit"
+              disabled={submitting}
+              className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-200 transition-all active:scale-[0.98]"
+            >
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Update Password"}
+            </Button>
+          </form>
+        </div>
+      )}
+      {/* ── SIGNUP FORM ── */}
+      {view === "signup" && (
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <button
+            onClick={() => setView("login")}
+            className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-all group text-sm font-medium"
+          >
+            <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
+            Back to sign in
+          </button>
+
+          <div>
+            <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-2">Registration</p>
+            <h2 className="text-3xl font-black text-slate-900 tracking-tight">Join the team.</h2>
+            <p className="text-slate-500 text-sm mt-1.5 font-medium leading-relaxed">
+              Fill in your details to request system access.
+            </p>
+          </div>
+
+          <form onSubmit={handleSignup} className="grid grid-cols-1 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Full Name</label>
+              <Input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Enter your full name"
+                required
+                className="h-11 border-slate-200 bg-white rounded-xl px-4 font-medium"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Work Email</label>
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@company.com"
+                required
+                className="h-11 border-slate-200 bg-white rounded-xl px-4 font-medium"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Desired Role</label>
+                <select
+                  value={roleId}
+                  onChange={(e) => setRoleId(e.target.value)}
+                  className="w-full h-11 border-slate-200 bg-white rounded-xl px-3 text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-sm"
+                >
+                  <option value="4">Salesperson</option>
+                  <option value="2">Manager</option>
+                  <option value="3">Accounts</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Department</label>
+                <Input
+                  type="text"
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value)}
+                  placeholder="e.g. Sales"
+                  className="h-11 border-slate-200 bg-white rounded-xl px-4 font-medium"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Password</label>
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Set a secure password"
+                required
+                className="h-11 border-slate-200 bg-white rounded-xl px-4 font-medium"
+              />
+            </div>
+
+            <Button
+              type="submit"
+              disabled={submitting}
+              className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl shadow-lg mt-2 transition-all"
+            >
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Request Approval"}
+            </Button>
+
+            <p className="text-[10px] text-center text-slate-400 font-medium px-4">
+              By clicking Request Approval, your profile will be indexed and sent to the administrator for verification.
+            </p>
+          </form>
+        </div>
+      )}
+    </div>
+  </div>
+
+  {
+    showGuide && (
+      <div className="fixed inset-0 z-[9999] bg-slate-900/40 backdrop-blur-xl flex flex-col items-center justify-start overflow-hidden">
+        {/* Immersive Background */}
+        <div className="absolute inset-0 bg-[#f1f3f7]" />
+
+        {/* Fixed Header */}
+        <div className="relative w-full bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-sm z-20">
+          <div className="flex items-center gap-4">
+            <div className="h-10 w-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-100">
+              <HelpCircle className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-slate-900 tracking-tight leading-none">System Intelligence Manual</h2>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Documentation v2.0 • Immersive Mode</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <Button
+              onClick={downloadGuide}
+              variant="outline"
+              className="h-9 px-4 rounded-lg border-slate-200 text-slate-600 text-[11px] font-bold hover:bg-slate-50 flex items-center gap-2"
+            >
+              <Download className="h-3.5 w-3.5" /> Download PDF
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => setShowGuide(false)}
+              className="h-9 w-9 p-0 rounded-lg hover:bg-slate-100 text-slate-500"
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Scrollable Container */}
+        <div className="relative w-full flex-1 overflow-y-auto pt-10 pb-24 custom-scrollbar">
+          <div className="max-w-4xl mx-auto px-6">
+            {/* Paper Content Wrapper */}
+            <div className="bg-white rounded-[2rem] shadow-2xl shadow-slate-200/50 border border-slate-100 p-12 md:p-16 space-y-16">
+
+              {/* Intro Section */}
+              <div className="space-y-4">
+                <Badge className="bg-indigo-50 text-indigo-600 border-indigo-100 px-3 py-1 font-black text-[10px] uppercase tracking-widest">Introduction</Badge>
+                <h1 className="text-4xl font-black text-slate-900 tracking-tighter leading-[1.1]">The Incentive Engine Architecture.</h1>
+                <p className="text-lg text-slate-500 font-medium leading-relaxed max-w-2xl">
+                  Welcome to PayoutPower. This system is designed for uncompromising financial accuracy. Below you will find detailed logic explanations for every module.
+                </p>
               </div>
 
-              {/* Scrollable Container */}
-              <div className="relative w-full flex-1 overflow-y-auto pt-10 pb-24 custom-scrollbar">
-                <div className="max-w-4xl mx-auto px-6">
-                  {/* Paper Content Wrapper */}
-                  <div className="bg-white rounded-[2rem] shadow-2xl shadow-slate-200/50 border border-slate-100 p-12 md:p-16 space-y-16">
+              {/* ── Visual Workflow ── */}
+              <section className="pt-8 border-t border-slate-50">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.3em] mb-10">Commission Lifecycle Visualizer</h3>
+                <div className="relative flex flex-col md:flex-row items-center justify-between gap-8 py-4">
+                  {[
+                    { icon: Layout, label: "Log Sale", desc: "Staff logs deal", color: "blue" },
+                    { icon: Target, label: "Verify", desc: "Automatic logic", color: "indigo" },
+                    { icon: Calculator, label: "Batch", desc: "Review pool", color: "purple" },
+                    { icon: CreditCard, label: "Disburse", desc: "Final Payout", color: "emerald" }
+                  ].map((step, i) => (
+                    <React.Fragment key={i}>
+                      <div className="flex flex-col items-center text-center gap-4 z-10 w-32">
+                        <div className="h-16 w-16 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-600 shadow-sm">
+                          <step.icon className="h-8 w-8" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-900 leading-none">{step.label}</p>
+                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-2">{step.desc}</p>
+                        </div>
+                      </div>
+                      {i < 3 && <ChevronRight className="hidden md:block h-6 w-6 text-slate-200" />}
+                    </React.Fragment>
+                  ))}
+                </div>
+              </section>
 
-                    {/* Intro Section */}
-                    <div className="space-y-4">
-                      <Badge className="bg-indigo-50 text-indigo-600 border-indigo-100 px-3 py-1 font-black text-[10px] uppercase tracking-widest">Introduction</Badge>
-                      <h1 className="text-4xl font-black text-slate-900 tracking-tighter leading-[1.1]">The Incentive Engine Architecture.</h1>
-                      <p className="text-lg text-slate-500 font-medium leading-relaxed max-w-2xl">
-                        Welcome to PayoutPower. This system is designed for uncompromising financial accuracy. Below you will find detailed logic explanations for every module.
-                      </p>
+              {/* ── Role Sections ── */}
+              <div className="space-y-20 pt-10">
+                {guideData.map((section: any, idx: number) => (
+                  <div key={idx} className="space-y-10 group">
+                    <div className="space-y-2">
+                      <h3 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-4">
+                        <span className="h-8 w-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-sm font-bold">{idx + 1}</span>
+                        {section.role}
+                      </h3>
+                      <p className="text-slate-500 font-medium text-base ml-12">{section.description}</p>
                     </div>
 
-                    {/* ── Visual Workflow ── */}
-                    <section className="pt-8 border-t border-slate-50">
-                      <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.3em] mb-10">Commission Lifecycle Visualizer</h3>
-                      <div className="relative flex flex-col md:flex-row items-center justify-between gap-8 py-4">
-                        {[
-                          { icon: Layout, label: "Log Sale", desc: "Staff logs deal", color: "blue" },
-                          { icon: Target, label: "Verify", desc: "Automatic logic", color: "indigo" },
-                          { icon: Calculator, label: "Batch", desc: "Review pool", color: "purple" },
-                          { icon: CreditCard, label: "Disburse", desc: "Final Payout", color: "emerald" }
-                        ].map((step, i) => (
-                          <React.Fragment key={i}>
-                            <div className="flex flex-col items-center text-center gap-4 z-10 w-32">
-                              <div className="h-16 w-16 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-600 shadow-sm">
-                                <step.icon className="h-8 w-8" />
-                              </div>
-                              <div>
-                                <p className="text-sm font-bold text-slate-900 leading-none">{step.label}</p>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-2">{step.desc}</p>
-                              </div>
-                            </div>
-                            {i < 3 && <ChevronRight className="hidden md:block h-6 w-6 text-slate-200" />}
-                          </React.Fragment>
-                        ))}
-                      </div>
-                    </section>
-
-                    {/* ── Role Sections ── */}
-                    <div className="space-y-20 pt-10">
-                      {guideData.map((section: any, idx: number) => (
-                        <div key={idx} className="space-y-10 group">
-                          <div className="space-y-2">
-                            <h3 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-4">
-                              <span className="h-8 w-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-sm font-bold">{idx + 1}</span>
-                              {section.role}
-                            </h3>
-                            <p className="text-slate-500 font-medium text-base ml-12">{section.description}</p>
+                    <div className="grid grid-cols-1 gap-6 pl-12">
+                      {section.features.map((feature: any, fidx: number) => (
+                        <div key={fidx} className="bg-[#fcfdfe] p-8 rounded-[1.5rem] border border-slate-100 shadow-sm hover:border-indigo-100 transition-all duration-300 space-y-6">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-lg font-bold text-slate-900 tracking-tight">{feature.title}</h4>
+                            <Badge variant="outline" className="text-[9px] font-bold text-slate-400 border-slate-200">OP-0{fidx + 1}</Badge>
                           </div>
 
-                          <div className="grid grid-cols-1 gap-6 pl-12">
-                            {section.features.map((feature: any, fidx: number) => (
-                              <div key={fidx} className="bg-[#fcfdfe] p-8 rounded-[1.5rem] border border-slate-100 shadow-sm hover:border-indigo-100 transition-all duration-300 space-y-6">
-                                <div className="flex items-center justify-between">
-                                  <h4 className="text-lg font-bold text-slate-900 tracking-tight">{feature.title}</h4>
-                                  <Badge variant="outline" className="text-[9px] font-bold text-slate-400 border-slate-200">OP-0{fidx + 1}</Badge>
-                                </div>
-
-                                <div className="grid md:grid-cols-2 gap-8">
-                                  <div className="space-y-3">
-                                    <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest leading-none">Process & Logic</p>
-                                    <div className="text-sm text-slate-600 font-medium leading-[1.6] whitespace-pre-wrap">
-                                      {feature.usage}
-                                    </div>
-                                  </div>
-
-                                  <div className="space-y-6">
-                                    {feature.tips && (
-                                      <div className="p-5 rounded-2xl bg-indigo-50/50 border border-indigo-100/50 flex gap-4">
-                                        <Lightbulb className="h-5 w-5 text-indigo-600 shrink-0 mt-0.5" />
-                                        <div>
-                                          <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest leading-none mb-2">Expert Tip</p>
-                                          <p className="text-xs text-slate-700 font-semibold leading-relaxed">
-                                            {feature.tips}
-                                          </p>
-                                        </div>
-                                      </div>
-                                    )}
-
-                                    {feature.what_not_to_do && (
-                                      <div className="p-5 rounded-2xl bg-rose-50/50 border border-rose-100/50 flex gap-4">
-                                        <AlertOctagon className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
-                                        <div>
-                                          <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest leading-none mb-2">Restricted Action</p>
-                                          <p className="text-xs text-rose-700 font-semibold leading-relaxed">
-                                            {feature.what_not_to_do}
-                                          </p>
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
+                          <div className="grid md:grid-cols-2 gap-8">
+                            <div className="space-y-3">
+                              <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest leading-none">Process & Logic</p>
+                              <div className="text-sm text-slate-600 font-medium leading-[1.6] whitespace-pre-wrap">
+                                {feature.usage}
                               </div>
-                            ))}
+                            </div>
+
+                            <div className="space-y-6">
+                              {feature.tips && (
+                                <div className="p-5 rounded-2xl bg-indigo-50/50 border border-indigo-100/50 flex gap-4">
+                                  <Lightbulb className="h-5 w-5 text-indigo-600 shrink-0 mt-0.5" />
+                                  <div>
+                                    <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest leading-none mb-2">Expert Tip</p>
+                                    <p className="text-xs text-slate-700 font-semibold leading-relaxed">
+                                      {feature.tips}
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+
+                              {feature.what_not_to_do && (
+                                <div className="p-5 rounded-2xl bg-rose-50/50 border border-rose-100/50 flex gap-4">
+                                  <AlertOctagon className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
+                                  <div>
+                                    <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest leading-none mb-2">Restricted Action</p>
+                                    <p className="text-xs text-rose-700 font-semibold leading-relaxed">
+                                      {feature.what_not_to_do}
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       ))}
                     </div>
-
-                    <div className="pt-20 border-t border-slate-50 text-center">
-                      <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.5em]">End of Documentation</p>
-                    </div>
                   </div>
-                </div>
+                ))}
               </div>
-            </div>
-          )}
-        </div>
 
-        {/* Bottom: Footer */}
-        <div className="relative z-10 flex items-center justify-between">
-          <p className="text-[10px] text-slate-700 font-bold uppercase tracking-[0.3em]">© 2026 PayoutPower IMS</p>
-          <div className="flex items-center gap-3">
-            <span className="text-[10px] text-slate-700 font-semibold">Secured by</span>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/5 border border-white/10">
-              <ShieldCheck className="h-3 w-3 text-slate-500" />
-              <span className="text-[10px] font-bold text-slate-500">JWT + RBAC</span>
+              <div className="pt-20 border-t border-slate-50 text-center">
+                <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.5em]">End of Documentation</p>
+              </div>
             </div>
           </div>
         </div>
       </div>
-
-      {/* ── RIGHT PANEL ── */}
-      <div className="flex-1 flex items-center justify-center px-6 bg-[#f8f9fc] relative overflow-hidden">
-        {/* Subtle pattern */}
-        <div className="absolute inset-0 pointer-events-none opacity-[0.025]"
-          style={{ backgroundImage: `radial-gradient(circle, #000 1px, transparent 1px)`, backgroundSize: '20px 20px' }} />
-
-        <div className="w-full max-w-[400px] relative z-10">
-          {/* Mobile brand */}
-          <div className="lg:hidden flex items-center gap-2.5 mb-10">
-            <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-              <Zap className="h-4 w-4 text-white fill-white" />
-            </div>
-            <span className="text-lg font-bold text-slate-900 tracking-tight">Payout<span className="text-indigo-600">Power</span></span>
-          </div>
-
-          {/* ── LOGIN FORM ── */}
-          {view === "login" && (
-            <div className="space-y-8">
-              <div>
-                <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-2">Secure Sign In</p>
-                <h2 className="text-3xl font-black text-slate-900 tracking-tight">Welcome back.</h2>
-                <p className="text-slate-500 text-sm mt-1.5 font-medium">Enter your credentials to access your workspace.</p>
-              </div>
-
-              <form onSubmit={handleLogin} className="space-y-5">
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Work Email</label>
-                  <Input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@company.com"
-                    required
-                    autoComplete="email"
-                    className="h-12 border-slate-200 bg-white rounded-xl px-4 text-slate-900 font-medium placeholder:text-slate-300 focus-visible:ring-indigo-500 focus-visible:border-indigo-400 transition-all shadow-sm"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <div className="flex justify-between items-center">
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Password</label>
-                    <button
-                      type="button"
-                      onClick={() => setView("forgot")}
-                      className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 transition-colors"
-                    >
-                      Forgot password?
-                    </button>
-                  </div>
-                  <div className="relative">
-                    <Input
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      required
-                      autoComplete="current-password"
-                      className="h-12 border-slate-200 bg-white rounded-xl px-4 pr-11 text-slate-900 font-medium placeholder:text-slate-300 focus-visible:ring-indigo-500 focus-visible:border-indigo-400 transition-all shadow-sm"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors"
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <Button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-                >
-                  {submitting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <>Sign In <ArrowRight className="h-3.5 w-3.5" /></>
-                  )}
-                </Button>
-
-                <div className="text-center pt-2">
-                  <p className="text-xs text-slate-500 font-medium">
-                    New to the platform?{" "}
-                    <button
-                      type="button"
-                      onClick={() => setView("signup")}
-                      className="font-bold text-indigo-600 hover:text-indigo-700 underline-offset-4 hover:underline"
-                    >
-                      Create an account
-                    </button>
-                  </p>
-                </div>
-              </form>
-
-              {/* Quick login nodes */}
-              <div>
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="h-px flex-1 bg-slate-200" />
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Dev Quick Access</span>
-                  <div className="h-px flex-1 bg-slate-200" />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {[...quickUsers].map((u) => (
-                    <button
-                      key={u.email}
-                      onClick={() => quickLogin(u.email)}
-                      className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all active:scale-[0.98] hover:shadow-md ${ROLE_COLORS[u.label] || "text-slate-400 bg-slate-500/10 border-slate-500/20"}`}
-                    >
-                      <div className="flex items-center justify-between w-full mb-1">
-                        <span className="text-[9px] font-bold uppercase tracking-widest opacity-70">{u.label}</span>
-                        <div className="h-1.5 w-1.5 rounded-full bg-current opacity-40 animate-pulse" />
-                      </div>
-                      <span className="text-xs font-bold truncate w-full leading-tight">{u.full_name || 'System User'}</span>
-                      <span className="text-[10px] opacity-60 truncate w-full font-medium">{u.email}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ── FORGOT PASSWORD ── */}
-          {view === "forgot" && (
-            <div className="space-y-8">
-              <button
-                onClick={() => setView("login")}
-                className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-all group text-sm font-medium"
-              >
-                <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
-                Back to sign in
-              </button>
-
-              <div>
-                <div className="h-11 w-11 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center mb-5">
-                  <Key className="h-5 w-5 text-indigo-600" />
-                </div>
-                <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-2">Account Recovery</p>
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight">Reset password.</h2>
-                <p className="text-slate-500 text-sm mt-1.5 font-medium leading-relaxed">
-                  Enter your email address and we'll send you a reset link.
-                </p>
-              </div>
-
-              <form onSubmit={handleForgot} className="space-y-5">
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Email Address</label>
-                  <Input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@company.com"
-                    required
-                    className="h-12 border-slate-200 bg-white rounded-xl px-4 font-medium placeholder:text-slate-300 focus-visible:ring-indigo-500 shadow-sm"
-                  />
-                </div>
-                <Button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-200 transition-all active:scale-[0.98]"
-                >
-                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send Reset Link"}
-                </Button>
-              </form>
-            </div>
-          )}
-
-          {/* ── RESET PASSWORD ── */}
-          {view === "reset" && (
-            <div className="space-y-8">
-              <div>
-                <div className="h-11 w-11 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center mb-5">
-                  <ShieldCheck className="h-5 w-5 text-emerald-600" />
-                </div>
-                <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest mb-2">New Password</p>
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight">Set new password.</h2>
-                <p className="text-slate-500 text-sm mt-1.5 font-medium">Choose a strong password (min. 8 characters).</p>
-              </div>
-
-              <form onSubmit={handleReset} className="space-y-5">
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Reset Token</label>
-                  <Input
-                    type="text"
-                    value={resetToken}
-                    readOnly
-                    className="h-12 bg-slate-100 border-slate-200 text-slate-500 font-mono text-[11px] rounded-xl px-4"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">New Password</label>
-                  <div className="relative">
-                    <Input
-                      type={showNewPassword ? "text" : "password"}
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="Min. 8 characters"
-                      required
-                      className="h-12 border-slate-200 bg-white rounded-xl px-4 pr-11 font-medium placeholder:text-slate-300 focus-visible:ring-emerald-500 shadow-sm"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowNewPassword(!showNewPassword)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors"
-                    >
-                      {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-                <Button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-200 transition-all active:scale-[0.98]"
-                >
-                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Update Password"}
-                </Button>
-              </form>
-            </div>
-          )}
-          {/* ── SIGNUP FORM ── */}
-          {view === "signup" && (
-            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <button
-                onClick={() => setView("login")}
-                className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-all group text-sm font-medium"
-              >
-                <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
-                Back to sign in
-              </button>
-
-              <div>
-                <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-2">Registration</p>
-                <h2 className="text-3xl font-black text-slate-900 tracking-tight">Join the team.</h2>
-                <p className="text-slate-500 text-sm mt-1.5 font-medium leading-relaxed">
-                  Fill in your details to request system access.
-                </p>
-              </div>
-
-              <form onSubmit={handleSignup} className="grid grid-cols-1 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Full Name</label>
-                  <Input
-                    type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Enter your full name"
-                    required
-                    className="h-11 border-slate-200 bg-white rounded-xl px-4 font-medium"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Work Email</label>
-                  <Input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@company.com"
-                    required
-                    className="h-11 border-slate-200 bg-white rounded-xl px-4 font-medium"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Desired Role</label>
-                    <select
-                      value={roleId}
-                      onChange={(e) => setRoleId(e.target.value)}
-                      className="w-full h-11 border-slate-200 bg-white rounded-xl px-3 text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-sm"
-                    >
-                      <option value="4">Salesperson</option>
-                      <option value="2">Manager</option>
-                      <option value="3">Accounts</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Department</label>
-                    <Input
-                      type="text"
-                      value={department}
-                      onChange={(e) => setDepartment(e.target.value)}
-                      placeholder="e.g. Sales"
-                      className="h-11 border-slate-200 bg-white rounded-xl px-4 font-medium"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Password</label>
-                  <Input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Set a secure password"
-                    required
-                    className="h-11 border-slate-200 bg-white rounded-xl px-4 font-medium"
-                  />
-                </div>
-
-                <Button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl shadow-lg mt-2 transition-all"
-                >
-                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Request Approval"}
-                </Button>
-
-                <p className="text-[10px] text-center text-slate-400 font-medium px-4">
-                  By clicking Request Approval, your profile will be indexed and sent to the administrator for verification.
-                </p>
-              </form>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+    )
+  }
+    </div >
   );
 }
