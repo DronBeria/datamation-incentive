@@ -1,0 +1,75 @@
+[
+    {
+        "role": "General Information",
+        "features": [
+            {
+                "title": "Getting Started",
+                "description": "Welcome to the Incentive Management System. This platform automates commission tracking, performance analysis, and financial settlements."
+            },
+            {
+                "title": "Architecture & Security",
+                "description": "The system uses Next.js for the core interface, Supabase for data integrity, and role-based access control (RBAC) to ensure data isolation."
+            }
+        ]
+    },
+    {
+        "role": "Admin / Manager",
+        "features": [
+            {
+                "title": "Commission Blueprinting",
+                "description": "Create and manage 'Schemes'. You can define Percentage, Tiered Bonus, or Fixed-per-unit logic. Use 'Soft Delete' to archive old logic without breaking history."
+            },
+            {
+                "title": "User Lifecycle",
+                "description": "Manage staff profiles and assign them to specific schemes. Approving a user allows them to start logging sales."
+            },
+            {
+                "title": "Batch Settlement",
+                "description": "Group earned commissions into 'Batches'. You can approve batches for payment or reject them with feedback if discrepancies are found."
+            }
+        ]
+    },
+    {
+        "role": "Salesperson",
+        "features": [
+            {
+                "title": "Self-Logging Sales",
+                "description": "Log your daily sales directly. The system automatically calculates your commission based on your assigned scheme."
+            },
+            {
+                "title": "Performance Dashboard",
+                "description": "Track your targets, achieved sales, and total earnings in real-time. View your payout history and status of logged deals."
+            },
+            {
+                "title": "Adjustments Registry",
+                "description": "View performance bonuses or manual corrections (deductions) applied to your account by the management."
+            }
+        ]
+    },
+    {
+        "role": "Accounts / Finance",
+        "features": [
+            {
+                "title": "Disbursement Queue",
+                "description": "View batches that have been approved by the Admin. Execute partial or full payments and mark them as 'Paid'."
+            },
+            {
+                "title": "Financial Audit",
+                "description": "Every financial transition is logged. You can review the status of every deal from 'Earned' to 'Paid' with full reference numbers."
+            }
+        ]
+    },
+    {
+        "role": "System Maintenance",
+        "features": [
+            {
+                "title": "Audit Logs",
+                "description": "Every action (Login, Create, Update, Delete) is tracked to prevent fraud and ensure accountability."
+            },
+            {
+                "title": "Rate Limiting",
+                "description": "The system includes built-in protection against brute-force attacks and bot traffic."
+            }
+        ]
+    }
+]

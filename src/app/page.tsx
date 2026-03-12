@@ -8,8 +8,17 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import {
   Loader2, ArrowLeft, Key, Eye, EyeOff, Zap,
-  ShieldCheck, TrendingUp, Users, BarChart3, ArrowRight
+  ShieldCheck, TrendingUp, Users, BarChart3, ArrowRight, HelpCircle, FileText, Download, X
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import guideData from "@/lib/user-guide-data.json";
+import { exportToPDF } from "@/lib/export-utils";
 
 const ROLE_COLORS: Record<string, string> = {
   admin: "text-purple-400 bg-purple-500/10 hover:bg-purple-500/20 border-purple-500/20",
@@ -38,6 +47,7 @@ export default function LoginPage() {
   const [newPassword, setNewPassword] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
 
   const [quickUsers, setQuickUsers] = useState<any[]>([]);
 
@@ -149,8 +159,22 @@ export default function LoginPage() {
 
   const quickLogin = (emailVal: string) => {
     setEmail(emailVal);
-    setPassword(""); // Only show the email, let user type password if needed or just clear it
+    setPassword("");
     setView("login");
+  };
+
+  const downloadGuide = () => {
+    const columns = [
+      { key: "role", label: "User Role" },
+      { key: "features_list", label: "Features & Instructions" }
+    ];
+
+    const formattedData = guideData.map(item => ({
+      role: item.role,
+      features_list: item.features.map(f => `${f.title}: ${f.description}`).join("\n\n")
+    }));
+
+    exportToPDF("PayoutPower IMS User Guide", columns, formattedData, "payoutpower_user_guide");
   };
 
   if (loading) {
@@ -229,6 +253,66 @@ export default function LoginPage() {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* User Guide Trigger */}
+        <div className="relative z-10">
+          <Dialog open={showGuide} onOpenChange={setShowGuide}>
+            <DialogTrigger asChild>
+              <Button
+                variant="outline"
+                className="group h-11 px-6 rounded-xl bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs transition-all flex items-center gap-2"
+              >
+                <HelpCircle className="h-4 w-4 text-indigo-400 group-hover:scale-110 transition-transform" />
+                Open User Guide
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl w-[95vw] h-[85vh] p-0 overflow-hidden border border-slate-800 bg-slate-950 text-slate-200">
+              <div className="flex flex-col h-full">
+                <div className="px-8 py-6 border-b border-slate-900 bg-slate-900/50 flex items-center justify-between shrink-0">
+                  <div className="flex items-center gap-4">
+                    <div className="h-10 w-10 rounded-xl bg-indigo-500/20 flex items-center justify-center border border-indigo-500/20">
+                      <HelpCircle className="h-5 w-5 text-indigo-400" />
+                    </div>
+                    <div>
+                      <DialogTitle className="text-xl font-black text-white tracking-tight">System Manual</DialogTitle>
+                      <p className="text-xs text-slate-500 font-medium">Feature directory & operating instructions</p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={downloadGuide}
+                    className="h-9 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-lg shadow-indigo-900/40 flex items-center gap-2"
+                  >
+                    <Download className="h-3.5 w-3.5" /> Download PDF
+                  </Button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-8 space-y-10 custom-scrollbar">
+                  {guideData.map((section: any, idx: number) => (
+                    <div key={idx} className="space-y-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-0.5 w-6 bg-indigo-500" />
+                        <h3 className="text-sm font-black text-white uppercase tracking-[0.2em]">{section.role}</h3>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {section.features.map((feature: any, fidx: number) => (
+                          <div key={fidx} className="p-5 rounded-2xl bg-white/5 border border-white/5 hover:border-indigo-500/30 hover:bg-white/[0.07] transition-all group">
+                            <div className="flex items-center gap-3 mb-2">
+                              <div className="h-1.5 w-1.5 rounded-full bg-indigo-500 group-hover:scale-125 transition-transform" />
+                              <h4 className="font-bold text-slate-100 text-sm tracking-tight">{feature.title}</h4>
+                            </div>
+                            <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                              {feature.description}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Bottom: Footer */}
