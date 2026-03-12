@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import { useAuth } from "@/lib/auth-context";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +16,7 @@ import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Loader2, ArrowDownCircle, ArrowUpCircle, Search, Download, Sliders, TrendingDown, TrendingUp, Minus, Sparkles, User, ArrowRight, Wallet, History } from "lucide-react";
+import { Plus, Loader2, ArrowDownCircle, ArrowUpCircle, Search, Download, Sliders, TrendingDown, TrendingUp, Minus, Sparkles, User, ArrowRight, Wallet, History, Trash2 } from "lucide-react";
 import { downloadCSV, exportToExcel, exportToPDF } from "@/lib/export-utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
@@ -36,6 +37,7 @@ const ADJ_CSV_COLUMNS = [
 ];
 
 export default function AdjustmentsPage() {
+    const { user } = useAuth();
     const [adjustments, setAdjustments] = useState<any[]>([]);
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -43,6 +45,7 @@ export default function AdjustmentsPage() {
     const [creating, setCreating] = useState(false);
     const [search, setSearch] = useState("");
     const [typeFilter, setTypeFilter] = useState("all");
+    const [deleting, setDeleting] = useState<number | null>(null);
     const [form, setForm] = useState({
         user_id: "", amount: "", reason: "", type: "clawback",
     });
@@ -95,6 +98,22 @@ export default function AdjustmentsPage() {
                 fetchData();
             }
         } catch { toast.error("Update failed"); }
+    };
+
+    const handleDelete = async (adj: any) => {
+        if (!window.confirm(`Are you sure you want to permanently delete this ${adj.type} adjustment for ₹${Math.abs(adj.amount).toLocaleString("en-IN")}?\n\nReason: ${adj.reason}\n\nThis action cannot be undone.`)) return;
+        setDeleting(adj.id);
+        try {
+            const res = await fetch(`/api/adjustments/${adj.id}`, { method: "DELETE" });
+            if (res.ok) {
+                toast.success("Adjustment permanently deleted");
+                fetchData();
+            } else {
+                const d = await res.json();
+                toast.error(d.error || "Cannot delete this adjustment");
+            }
+        } catch { toast.error("Deletion failed"); }
+        finally { setDeleting(null); }
     };
 
     const filtered = useMemo(() => {
@@ -299,9 +318,22 @@ export default function AdjustmentsPage() {
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-right pr-6">
-                                                <span className="text-xs font-semibold text-slate-400">
-                                                    {new Date(a.created_at).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' })}
-                                                </span>
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <span className="text-xs font-semibold text-slate-400">
+                                                        {new Date(a.created_at).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                    </span>
+                                                    {["admin", "manager"].includes(user?.role || "") && a.status !== 'applied' && (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            onClick={() => handleDelete(a)}
+                                                            disabled={deleting === a.id}
+                                                            className="h-7 w-7 p-0 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-md opacity-0 group-hover:opacity-100 transition-all"
+                                                        >
+                                                            {deleting === a.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                                                        </Button>
+                                                    )}
+                                                </div>
                                             </TableCell>
                                         </TableRow>
                                     );

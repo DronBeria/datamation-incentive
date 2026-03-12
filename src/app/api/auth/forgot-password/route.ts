@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendPasswordResetEmail } from "@/lib/email";
+import { rateLimit, RATE_LIMITS, getClientIp } from "@/lib/rate-limit";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 
@@ -14,9 +15,23 @@ function getSupabase() {
     );
 }
 
+const forgotPwLimiter = rateLimit(RATE_LIMITS.AUTH_FORGOT_PASSWORD);
+
 // ─── POST: Request password reset (sends email) ───
 export async function POST(req: NextRequest) {
     try {
+        // Rate limit check
+        const ip = getClientIp(req);
+        const rl = forgotPwLimiter.check(ip);
+        if (!rl.success) {
+            const response = NextResponse.json(
+                { error: "Too many reset requests. Please try again later." },
+                { status: 429 }
+            );
+            Object.entries(forgotPwLimiter.headers(rl)).forEach(([k, v]) => response.headers.set(k, v));
+            return response;
+        }
+
         const { email } = await req.json();
 
         if (!email || typeof email !== "string") {

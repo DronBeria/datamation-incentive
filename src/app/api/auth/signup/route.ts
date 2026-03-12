@@ -1,12 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { sendAdminSignupNotification } from "@/lib/email";
+import { rateLimit, RATE_LIMITS, getClientIp } from "@/lib/rate-limit";
 import bcrypt from "bcryptjs";
 
 export const dynamic = "force-dynamic";
 
+const signupLimiter = rateLimit(RATE_LIMITS.AUTH_SIGNUP);
+
 export async function POST(req: NextRequest) {
     try {
+        // Rate limit check
+        const ip = getClientIp(req);
+        const rl = signupLimiter.check(ip);
+        if (!rl.success) {
+            const response = NextResponse.json(
+                { error: "Too many signup attempts. Please try again later." },
+                { status: 429 }
+            );
+            Object.entries(signupLimiter.headers(rl)).forEach(([k, v]) => response.headers.set(k, v));
+            return response;
+        }
+
         const body = await req.json();
         const { email, password, full_name, role_id, department } = body;
 

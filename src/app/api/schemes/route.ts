@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { name, calculation_type, base_rate, target_threshold, bonus_rate, description } = body;
+    const { name, calculation_type, base_rate, target_threshold, bonus_rate, description, max_payable } = body;
 
     if (!name || !calculation_type) {
         return NextResponse.json({ error: "Name and calculation type are required" }, { status: 400 });
@@ -55,7 +55,8 @@ export async function POST(req: NextRequest) {
             calculation_type,
             base_rate: base_rate || 0,
             target_threshold: target_threshold || 0,
-            bonus_rate: bonus_rate || 0
+            bonus_rate: bonus_rate || 0,
+            max_payable: max_payable || null
         })
         .select('id')
         .single();

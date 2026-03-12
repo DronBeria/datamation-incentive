@@ -81,7 +81,19 @@ export async function GET(req: NextRequest) {
     });
     results.push({ action: 'add_adj_reference_number', success: !errAdjRef, error: errAdjRef?.message });
 
-    // 7. Add reset_token and reset_token_expiry to users if missing
+    // 7. Add adjustment_id to batch_items if missing
+    const { error: errBatchAdj } = await supabase.rpc('exec_sql', {
+      sql_query: `
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='batch_items' AND column_name='adjustment_id') THEN
+            ALTER TABLE public.batch_items ADD COLUMN adjustment_id INTEGER REFERENCES public.adjustments(id);
+          END IF;
+        END $$;
+      `
+    });
+    results.push({ action: 'add_batch_adj_id', success: !errBatchAdj, error: errBatchAdj?.message });
+
+    // 8. Add reset_token and reset_token_expiry to users if missing
     const { error: errReset } = await supabase.rpc('exec_sql', {
       sql_query: `
         DO $$ BEGIN
@@ -96,7 +108,7 @@ export async function GET(req: NextRequest) {
     });
     results.push({ action: 'add_reset_columns', success: !errReset, error: errReset?.message });
 
-    // 8. Reload Schema Cache
+    // 9. Reload Schema Cache
     const { error: errReload } = await supabase.rpc('exec_sql', {
       sql_query: "NOTIFY pgrst, 'reload schema';"
     });
@@ -110,4 +122,3 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
-

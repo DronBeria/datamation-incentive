@@ -23,7 +23,7 @@ import {
   ChevronDown, Search, Download, FileText,
   List, ChevronLeft, ChevronRight as ChevRight,
   TrendingUp, Clock, Banknote, Layers, Calculator, ArrowRight, Info,
-  Zap, ShieldCheck
+  Zap, ShieldCheck, Trash2
 } from "lucide-react";
 import { syncToLocal } from "@/lib/hybrid-sync";
 import { DateRangePicker } from "@/components/date-range-picker";
@@ -287,7 +287,7 @@ function BatchDetailModal({ batch, onClose, user, onAction, actionLoading }: any
                 {actionLoading === batch.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Mark Entire Batch Paid"}
               </Button>
             )}
-            {(batch.status === "draft" || batch.status === "rejected") && (
+            {["admin", "manager"].includes(user?.role || "") && (batch.status === "draft" || batch.status === "rejected") && (
               <Button
                 variant="outline"
                 onClick={() => {
@@ -326,13 +326,14 @@ function BatchesContent() {
   const [salesLogs, setSalesLogs] = useState<any[]>([]);
   const [selectedBatch, setSelectedBatch] = useState<any>(null);
   const [batchName, setBatchName] = useState("");
-  const [selectedLogs, setSelectedLogs] = useState<Set<number>>(new Set());
+  const [selectedLogs, setSelectedLogs] = useState<Set<string>>(new Set());
   const [logSearch, setLogSearch] = useState("");
 
   const filteredLogs = useMemo(() => {
     return salesLogs.filter(log =>
       (log.client_name || "").toLowerCase().includes(logSearch.toLowerCase()) ||
-      (log.salesperson_name || "").toLowerCase().includes(logSearch.toLowerCase())
+      (log.salesperson_name || "").toLowerCase().includes(logSearch.toLowerCase()) ||
+      (log.reason || "").toLowerCase().includes(logSearch.toLowerCase())
     );
   }, [salesLogs, logSearch]);
 
@@ -360,9 +361,33 @@ function BatchesContent() {
 
   useEffect(() => {
     if (showCreate) {
-      fetch("/api/sales?status=earned&exclude_flagged=true")
-        .then(async r => { if (!r.ok) throw new Error(); const d = await r.json(); if (Array.isArray(d)) setSalesLogs(d); })
-        .catch(() => toast.error("Infrastructure lookup failed"));
+      const getPool = async () => {
+        try {
+          const [salesRes, adjRes] = await Promise.all([
+            fetch("/api/sales?status=earned&exclude_flagged=true"),
+            fetch("/api/adjustments?status=pending")
+          ]);
+
+          const sales = await salesRes.json();
+          const adjs = await adjRes.json();
+
+          const pool = [
+            ...(Array.isArray(sales) ? sales.map(s => ({ ...s, pool_type: 'sale', pool_id: `S-${s.id}` })) : []),
+            ...(Array.isArray(adjs) ? adjs.map(a => ({
+              ...a,
+              pool_type: 'adjustment',
+              pool_id: `A-${a.id}`,
+              client_name: `[${a.type.toUpperCase()}] ${a.reason}`,
+              calculated_commission: a.amount,
+              salesperson_name: a.full_name
+            })) : [])
+          ];
+          setSalesLogs(pool);
+        } catch {
+          toast.error("Infrastructure lookup failed");
+        }
+      };
+      getPool();
     }
   }, [showCreate]);
 
@@ -396,10 +421,11 @@ function BatchesContent() {
     setCreating(true);
     try {
       const items = selectedItemsSummary.items.map(l => ({
-        salesperson_id: l.salesperson_id,
-        sales_log_id: l.id,
+        salesperson_id: l.salesperson_id || l.user_id,
+        sales_log_id: l.pool_type === 'sale' ? l.id : null,
+        adjustment_id: l.pool_type === 'adjustment' ? l.id : null,
         amount: l.calculated_commission,
-        description: `Commission for ${l.client_name}`,
+        description: l.pool_type === 'sale' ? `Commission for ${l.client_name}` : l.reason,
       }));
       const res = await fetch("/api/batches", {
         method: "POST",
@@ -424,8 +450,8 @@ function BatchesContent() {
   };
 
   const selectedItemsSummary = useMemo(() => {
-    const items = salesLogs.filter(l => selectedLogs.has(l.id));
-    return { items, total: items.reduce((s, i) => s + i.calculated_commission, 0) };
+    const items = salesLogs.filter(l => selectedLogs.has(l.pool_id || l.id));
+    return { items, total: items.reduce((s, i) => s + (i.calculated_commission || 0), 0) };
   }, [salesLogs, selectedLogs]);
 
   const stats = useMemo(() => ({
@@ -665,6 +691,16 @@ function BatchesContent() {
                           </Button>
                         </>
                       )}
+                      {["draft", "rejected"].includes(batch.status) && ["admin", "manager"].includes(user?.role || "") && (
+                        <Button
+                          variant="outline"
+                          onClick={(e) => { e.stopPropagation(); handleAction(batch.id, "delete"); }}
+                          disabled={actionLoading === batch.id}
+                          className="h-10 px-5 border-rose-200 text-rose-600 hover:bg-rose-50 rounded-xl font-semibold text-xs transition-all flex items-center gap-2"
+                        >
+                          <Trash2 className="h-4 w-4" /> Delete Batch
+                        </Button>
+                      )}
                       {batch.status === "approved" && ["accounts", "admin"].includes(user?.role || "") && (
                         <Button
                           onClick={(e) => { e.stopPropagation(); setSelectedBatch(batch); }}
@@ -732,7 +768,7 @@ function BatchesContent() {
                   <button
                     type="button"
                     onClick={() => {
-                      const visible = filteredLogs.map(l => l.id);
+                      const visible = filteredLogs.map(l => l.pool_id);
                       const allSelected = visible.length > 0 && visible.every(id => selectedLogs.has(id));
                       const next = new Set(selectedLogs);
                       if (allSelected) visible.forEach(id => next.delete(id));
@@ -741,7 +777,7 @@ function BatchesContent() {
                     }}
                     className="h-9 px-4 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-600 hover:border-blue-400 hover:text-blue-600 transition-all shrink-0 whitespace-nowrap"
                   >
-                    {filteredLogs.length > 0 && filteredLogs.every(l => selectedLogs.has(l.id)) ? "Deselect All" : "Select All"}
+                    {filteredLogs.length > 0 && filteredLogs.every(l => selectedLogs.has(l.pool_id)) ? "Deselect All" : "Select All"}
                   </button>
                 </div>
 
@@ -750,8 +786,8 @@ function BatchesContent() {
                   {salesLogs.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-center py-16 opacity-50">
                       <List className="h-10 w-10 text-slate-300 mb-3" />
-                      <p className="text-sm font-semibold text-slate-600">No approved commissions available</p>
-                      <p className="text-xs text-slate-400 mt-1">Commissions must be approved before batching</p>
+                      <p className="text-sm font-semibold text-slate-600">No payout items available</p>
+                      <p className="text-xs text-slate-400 mt-1">Earnings and adjustments must be approved/pending before batching</p>
                     </div>
                   ) : filteredLogs.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-center py-16">
@@ -761,13 +797,14 @@ function BatchesContent() {
                   ) : (
                     <div className="space-y-2">
                       {filteredLogs.map(log => {
-                        const active = selectedLogs.has(log.id);
+                        const active = selectedLogs.has(log.pool_id);
+                        const isAdj = log.pool_type === 'adjustment';
                         return (
                           <div
-                            key={log.id}
+                            key={log.pool_id}
                             onClick={() => {
                               const next = new Set(selectedLogs);
-                              active ? next.delete(log.id) : next.add(log.id);
+                              active ? next.delete(log.pool_id) : next.add(log.pool_id);
                               setSelectedLogs(next);
                             }}
                             className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer select-none transition-all ${active
@@ -784,15 +821,16 @@ function BatchesContent() {
                                 {log.client_name || "Direct Commission"}
                               </p>
                               <p className="text-xs text-slate-500 mt-0.5">
-                                {log.salesperson_name} · {log.sale_date}
+                                {log.salesperson_name} · {log.sale_date || new Date().toLocaleDateString()}
                                 {log.product && <span className="ml-1 text-slate-400">· {log.product}</span>}
+                                {isAdj && <Badge variant="outline" className="ml-2 scale-75 origin-left bg-purple-50 text-purple-600 border-purple-100 font-bold uppercase tracking-tight">Adjustment</Badge>}
                               </p>
                             </div>
                             <div className="text-right shrink-0">
                               <p className={`text-sm font-bold tabular-nums ${active ? "text-blue-700" : "text-slate-900"}`}>
                                 ₹{log.calculated_commission?.toLocaleString("en-IN")}
                               </p>
-                              <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wide">commission</p>
+                              <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wide">{isAdj ? log.type : 'commission'}</p>
                             </div>
                           </div>
                         );

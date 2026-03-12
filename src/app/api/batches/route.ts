@@ -144,7 +144,8 @@ export async function POST(req: NextRequest) {
     const itemsToInsert = items.map((i: any) => ({
       batch_id: batch.id,
       salesperson_id: i.salesperson_id,
-      sales_log_id: i.sales_log_id,
+      sales_log_id: i.sales_log_id || null,
+      adjustment_id: i.adjustment_id || null, // Link to adjustment if present
       amount: i.amount,
       description: i.description || ""
     }));
@@ -155,7 +156,8 @@ export async function POST(req: NextRequest) {
 
     if (iErr) throw iErr;
 
-    // 3. Update Sales Logs status to 'accrued'
+    // 3. Update Statuses
+    // 3a. Update Sales Logs status to 'accrued'
     if (logIds.length > 0) {
       const { error: lErr } = await supabase
         .from('sales_logs')
@@ -163,6 +165,17 @@ export async function POST(req: NextRequest) {
         .in('id', logIds);
 
       if (lErr) throw lErr;
+    }
+
+    // 3b. Update Adjustments status to 'applied' if any exist in the batch
+    const adjIds = items.filter((i: any) => i.adjustment_id).map((i: any) => i.adjustment_id);
+    if (adjIds.length > 0) {
+      const { error: aErr } = await supabase
+        .from('adjustments')
+        .update({ status: 'applied', updated_at: new Date().toISOString() })
+        .in('id', adjIds);
+
+      if (aErr) throw aErr;
     }
 
     // 4. Audit

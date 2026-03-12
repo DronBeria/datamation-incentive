@@ -24,7 +24,7 @@ import { downloadCSV, exportToExcel, exportToPDF } from "@/lib/export-utils";
 import {
   Plus, Loader2, Search, CheckCircle2, XCircle, MoreHorizontal,
   ShoppingCart, TrendingUp, Clock, Banknote, Download, Info,
-  Eye, ArrowRight, User, Package, Sparkles, Target, Flag, CheckSquare, AlertTriangle,
+  Eye, ArrowRight, User, Package, Sparkles, Target, Flag, CheckSquare, AlertTriangle, Trash2,
 } from "lucide-react";
 import { DateRangePicker } from "@/components/date-range-picker";
 
@@ -166,6 +166,22 @@ export default function SalesPage() {
       if (res.ok) { toast.success(`Dispute status updated`); fetchLogs(); }
       else { const d = await res.json(); toast.error(d.error || "Action failed"); }
     } catch { toast.error("Dispute update failed"); }
+    finally { setReviewing(null); }
+  };
+
+  const handleDeleteSale = async (logId: string, clientName: string) => {
+    if (!window.confirm(`Are you sure you want to permanently delete the sale record for "${clientName}"?\n\nThis action cannot be undone.`)) return;
+    setReviewing(logId);
+    try {
+      const res = await fetch(`/api/sales/${logId}`, { method: "DELETE" });
+      if (res.ok) {
+        toast.success("Sale record permanently deleted");
+        fetchLogs();
+      } else {
+        const d = await res.json();
+        toast.error(d.error || "Cannot delete this record");
+      }
+    } catch { toast.error("Deletion failed"); }
     finally { setReviewing(null); }
   };
 
@@ -404,6 +420,11 @@ export default function SalesPage() {
                               {isManager && log.dispute_status === 'flagged' && (
                                 <DropdownMenuItem onClick={() => handleDispute(log.id, "resolve_flag")} className="rounded-lg text-xs font-semibold py-2 cursor-pointer text-emerald-600 focus:text-emerald-700 bg-emerald-50 mt-1">
                                   <CheckSquare className="h-3.5 w-3.5 mr-2" /> Resolve Dispute
+                                </DropdownMenuItem>
+                              )}
+                              {isManager && !['paid', 'accrued'].includes(log.status) && (
+                                <DropdownMenuItem onClick={() => handleDeleteSale(log.id, log.client_name)} className="rounded-lg text-xs font-semibold py-2 cursor-pointer text-red-600 focus:text-red-700 bg-red-50 mt-1">
+                                  <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete Record
                                 </DropdownMenuItem>
                               )}
                             </DropdownMenuContent>

@@ -12,14 +12,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const { id } = await params;
     const body = await req.json();
-    const { name, description, calculation_type, base_rate, target_threshold, bonus_rate } = body;
+    const { name, description, calculation_type, base_rate, target_threshold, bonus_rate, max_payable } = body;
 
     try {
         await db.prepare(`
           UPDATE public.incentive_schemes 
-          SET name = ?, description = ?, calculation_type = ?, base_rate = ?, target_threshold = ?, bonus_rate = ?, updated_at = CURRENT_TIMESTAMP
+          SET name = ?, description = ?, calculation_type = ?, base_rate = ?, target_threshold = ?, bonus_rate = ?, max_payable = ?, updated_at = CURRENT_TIMESTAMP
           WHERE id = ?
-        `).run(name, description, calculation_type, base_rate, target_threshold, bonus_rate, id);
+        `).run(name, description, calculation_type, base_rate, target_threshold, bonus_rate, max_payable, id);
 
         await db.prepare(
             "INSERT INTO public.audit_logs (user_id, action, entity_type, entity_id, new_value) VALUES (?, 'UPDATE', 'incentive_scheme', ?, ?)"
@@ -33,8 +33,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const session = await getSession();
-    if (!session || session.role !== "admin") {
-        return NextResponse.json({ error: "Only administrators can decommission schemes" }, { status: 403 });
+    const role = (session?.role || "").toLowerCase().trim();
+    if (!session || !["admin", "manager"].includes(role)) {
+        return NextResponse.json({ error: "Only administrators and managers can decommission schemes" }, { status: 403 });
     }
 
     const { id } = await params;

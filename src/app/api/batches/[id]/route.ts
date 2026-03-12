@@ -152,12 +152,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         updated_at: new Date().toISOString()
       }).eq('id', id);
 
-      // Update Sales Logs to paid
-      const { data: items } = await supabase.from('batch_items').select('sales_log_id, salesperson_id, amount').eq('batch_id', id);
+      // Update Statuses
+      const { data: items } = await supabase.from('batch_items').select('sales_log_id, adjustment_id, salesperson_id, amount').eq('batch_id', id);
       if (items) {
         const logIds = items.filter(i => i.sales_log_id).map(i => i.sales_log_id);
+        const adjIds = items.filter(i => i.adjustment_id).map(i => i.adjustment_id);
+
         if (logIds.length > 0) {
           await supabase.from('sales_logs').update({ status: 'paid', updated_at: new Date().toISOString() }).in('id', logIds);
+        }
+
+        if (adjIds.length > 0) {
+          await supabase.from('adjustments').update({ status: 'paid', updated_at: new Date().toISOString() }).in('id', adjIds);
         }
 
         const salespersons = Array.from(new Set(items.map(i => i.salesperson_id)));
@@ -222,10 +228,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         .update({ batch_id: newBatch.id })
         .in('id', selectedItemIds);
 
-      // 4. Update Sales Logs to paid
+      // 4. Update Statuses to paid
       const logIds = items.filter(i => i.sales_log_id).map(i => i.sales_log_id);
+      const adjIds = items.filter(i => i.adjustment_id).map(i => i.adjustment_id);
+
       if (logIds.length > 0) {
         await supabase.from('sales_logs').update({ status: 'paid', updated_at: new Date().toISOString() }).in('id', logIds);
+      }
+
+      if (adjIds.length > 0) {
+        await supabase.from('adjustments').update({ status: 'paid', updated_at: new Date().toISOString() }).in('id', adjIds);
       }
 
       // 5. Update parent batch amount
@@ -305,12 +317,21 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       return NextResponse.json({ error: "Cannot delete an approved or paid batch." }, { status: 400 });
     }
 
-    // 2. Reset associated sales logs back to 'earned'
-    const { data: items } = await supabase.from('batch_items').select('sales_log_id').eq('batch_id', id);
-    if (items) {
-      const logIds = items.filter(i => i.sales_log_id).map(i => i.sales_log_id);
+    // 2. Reset associated items back to their original pool
+    const { data: batchItems } = await supabase.from('batch_items').select('sales_log_id, adjustment_id').eq('batch_id', id);
+
+    if (batchItems) {
+      const logIds = batchItems.filter(i => i.sales_log_id).map(i => i.sales_log_id);
+      const adjIds = batchItems.filter(i => i.adjustment_id).map(i => i.adjustment_id);
+
+      // Revert sales logs
       if (logIds.length > 0) {
         await supabase.from('sales_logs').update({ status: 'earned' }).in('id', logIds);
+      }
+
+      // Revert adjustments
+      if (adjIds.length > 0) {
+        await supabase.from('adjustments').update({ status: 'pending' }).in('id', adjIds);
       }
     }
 

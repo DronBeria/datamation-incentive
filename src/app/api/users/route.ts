@@ -286,7 +286,7 @@ export async function DELETE(req: Request) {
 
       // 2. Notifications & Adjustments
       await supabase.from('notifications').delete().eq('user_id', id);
-      await supabase.from('adjustments').delete().eq('salesperson_id', id);
+      await supabase.from('adjustments').delete().eq('user_id', id);
 
       // 3. Sales Logs & Batch Items
       // We must delete batch items first because they reference sales logs

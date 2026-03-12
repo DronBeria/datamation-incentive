@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { validateApiKey, unauthorizedApiResponse } from "@/lib/api-keys";
 import fs from "fs";
 import path from "path";
 
@@ -15,10 +16,9 @@ function getSupabase() {
 }
 
 export async function GET(request: Request) {
-    // Validate cron secret if deploying to Vercel/AWS
-    const authHeader = request.headers.get('authorization');
-    if (process.env.NODE_ENV === "production" && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-        return NextResponse.json({ error: "Unauthorized cron access" }, { status: 401 });
+    // Validate cron secret (middleware also checks, this is defense-in-depth)
+    if (process.env.NODE_ENV === "production" && !validateApiKey(request, "CRON_SECRET")) {
+        return unauthorizedApiResponse("Unauthorized cron access");
     }
 
     try {
