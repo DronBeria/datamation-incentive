@@ -47,7 +47,7 @@ async function ensureTable(supabase: ReturnType<typeof getSupabase>) {
   for (const col of columns) {
     await supabase.rpc("exec_sql", {
       sql_query: `ALTER TABLE public.calendar_events ADD COLUMN IF NOT EXISTS ${col.name} ${col.type};`
-    }).catch(() => { }); // Ignore if already there
+    });
   }
 }
 
