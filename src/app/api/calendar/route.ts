@@ -13,6 +13,7 @@ function getSupabase() {
 }
 
 async function ensureTable(supabase: ReturnType<typeof getSupabase>) {
+  // 1. Create table if missing
   await supabase.rpc("exec_sql", {
     sql_query: `
       CREATE TABLE IF NOT EXISTS public.calendar_events (
@@ -31,6 +32,23 @@ async function ensureTable(supabase: ReturnType<typeof getSupabase>) {
       );
     `,
   });
+
+  // 2. Ensure all columns exist (in case of partial migration)
+  const columns = [
+    { name: "event_date", type: "DATE NOT NULL DEFAULT CURRENT_DATE" },
+    { name: "start_time", type: "TEXT" },
+    { name: "end_time", type: "TEXT" },
+    { name: "type", type: "TEXT DEFAULT 'meeting'" },
+    { name: "attendees", type: "TEXT" },
+    { name: "created_by", type: "BIGINT REFERENCES public.users(id)" },
+    { name: "created_by_name", type: "TEXT" }
+  ];
+
+  for (const col of columns) {
+    await supabase.rpc("exec_sql", {
+      sql_query: `ALTER TABLE public.calendar_events ADD COLUMN IF NOT EXISTS ${col.name} ${col.type};`
+    }).catch(() => { }); // Ignore if already there
+  }
 }
 
 export async function GET(req: NextRequest) {

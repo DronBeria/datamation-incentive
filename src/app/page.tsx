@@ -276,15 +276,6 @@ export default function LoginPage() {
             <HelpCircle className="h-4 w-4 text-indigo-400 group-hover:scale-110 transition-transform" />
             Open Full User Guide
           </Button>
-          <Link href="/calendar">
-            <Button
-              variant="outline"
-              className="group h-11 px-6 rounded-xl bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs transition-all flex items-center gap-2"
-            >
-              <Calendar className="h-4 w-4 text-indigo-400 group-hover:scale-110 transition-transform" />
-              Team Calendar
-            </Button>
-          </Link>
         </div>
 
         {/* Bottom: Footer */}

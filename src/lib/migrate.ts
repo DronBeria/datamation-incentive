@@ -149,6 +149,22 @@ async function migrate() {
       applied_at TIMESTAMPTZ
     );
 
+    -- Create calendar_events table
+    CREATE TABLE IF NOT EXISTS calendar_events (
+      id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+      title TEXT NOT NULL,
+      description TEXT,
+      event_date DATE NOT NULL,
+      start_time TEXT,
+      end_time TEXT,
+      type TEXT DEFAULT 'meeting' CHECK(type IN ('meeting', 'review', 'deadline', 'training', 'other')),
+      attendees TEXT,
+      created_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
+      created_by_name TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    );
+
     -- Create attachments table
     CREATE TABLE IF NOT EXISTS attachments (
       id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
