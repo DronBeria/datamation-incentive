@@ -172,7 +172,7 @@ export async function POST(req: NextRequest) {
     if (adjIds.length > 0) {
       const { error: aErr } = await supabase
         .from('adjustments')
-        .update({ status: 'applied', updated_at: new Date().toISOString() })
+        .update({ status: 'applied', applied_at: new Date().toISOString() })
         .in('id', adjIds);
 
       if (aErr) throw aErr;

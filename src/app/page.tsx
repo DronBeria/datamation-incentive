@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import {
   Loader2, ArrowLeft, Key, Eye, EyeOff, Zap,
   ShieldCheck, TrendingUp, Users, BarChart3, ArrowRight, HelpCircle, FileText, Download, X,
-  Layout, Target, Calculator, CreditCard, ChevronRight, Info, Lightbulb, AlertOctagon
+  Layout, Target, Calculator, CreditCard, ChevronRight, Info, Lightbulb, AlertOctagon, Calendar
 } from "lucide-react";
 import {
   Dialog,
@@ -266,7 +266,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <div className="relative z-10">
+        <div className="relative z-10 flex items-center gap-3">
           <Button
             variant="outline"
             onClick={() => setShowGuide(true)}
@@ -275,6 +275,15 @@ export default function LoginPage() {
             <HelpCircle className="h-4 w-4 text-indigo-400 group-hover:scale-110 transition-transform" />
             Open Full User Guide
           </Button>
+          <Link href="/calendar">
+            <Button
+              variant="outline"
+              className="group h-11 px-6 rounded-xl bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs transition-all flex items-center gap-2"
+            >
+              <Calendar className="h-4 w-4 text-indigo-400 group-hover:scale-110 transition-transform" />
+              Team Calendar
+            </Button>
+          </Link>
         </div>
 
         {/* Bottom: Footer */}

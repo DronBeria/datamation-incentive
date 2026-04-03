@@ -21,6 +21,7 @@ import {
   X,
   Zap,
   Settings,
+  Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SyncStatusIcon } from "@/components/ui/sync-status";
@@ -32,6 +33,7 @@ const NAV_ITEMS: Record<string, { label: string; href: string; icon: any; roles:
     { label: "Sales Pipeline", href: "/dashboard/sales", icon: FileText, roles: ["admin", "manager", "salesperson"] },
     { label: "Adjustments", href: "/dashboard/adjustments", icon: CreditCard, roles: ["admin", "manager", "accounts"] },
     { label: "Analytics", href: "/dashboard/reports", icon: BarChart3, roles: ["admin", "manager", "accounts"] },
+    { label: "Calendar", href: "/calendar", icon: Calendar, roles: ["admin", "manager", "accounts", "salesperson"] },
   ],
   admin: [
     { label: "Team Management", href: "/dashboard/users", icon: Users, roles: ["admin", "manager"] },

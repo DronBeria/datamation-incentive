@@ -96,6 +96,9 @@ export default function AdjustmentsPage() {
             if (res.ok) {
                 toast.success(`Adjustment ${status} successfully`);
                 fetchData();
+            } else {
+                const d = await res.json();
+                toast.error(d.error || "Status update failed");
             }
         } catch { toast.error("Update failed"); }
     };

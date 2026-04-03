@@ -85,9 +85,6 @@ export default function UsersPage() {
         if (Array.isArray(d)) {
           console.log("[USERS_PAGE] Server returned", d.length, "users");
           setUsers(d);
-          if (d.length > 0) {
-            toast.success(`Synced ${d.length} members from cloud`);
-          }
         } else if (d && d.error) {
           toast.error("Cloud Error: " + d.error);
         }
