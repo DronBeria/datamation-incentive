@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
