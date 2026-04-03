@@ -6,9 +6,9 @@ declare global {
 
 const SMTP_HOST = process.env.SMTP_HOST || 'smtp.gmail.com';
 const SMTP_PORT = parseInt(process.env.SMTP_PORT || '465', 10);
-const SMTP_USER = process.env.SMTP_USER || 'datamationincentive@gmail.com';
+const SMTP_USER = process.env.SMTP_USER || 'IncentiveProincentive@gmail.com';
 const SMTP_PASS = (process.env.SMTP_PASS || '').replace(/^["']|["']$/g, '').trim();
-const SMTP_FROM = process.env.SMTP_FROM || `"PayoutPower" <${SMTP_USER}>`;
+const SMTP_FROM = process.env.SMTP_FROM || `"IncentivePro" <${SMTP_USER}>`;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001';
 
 function getTransporter(): nodemailer.Transporter {
@@ -71,7 +71,7 @@ function baseTemplate(content: string, requestedTheme: 'admin' | 'general' = 'ge
 <body style="margin:0;padding:40px 20px;background:${theme.bg};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:${theme.text};">
   <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:16px;border:1px solid ${BORDER};overflow:hidden;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);">
     <div style="background:${theme.brand};padding:28px 32px;border-bottom:4px solid ${theme.accent};">
-      <h1 style="margin:0;color:#fff;font-size:24px;font-weight:800;letter-spacing:-0.5px;">PayoutPower</h1>
+      <h1 style="margin:0;color:#fff;font-size:24px;font-weight:800;letter-spacing:-0.5px;">IncentivePro</h1>
       <p style="margin:4px 0 0;color:rgba(255,255,255,0.7);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">${theme.label}</p>
     </div>
     <div style="padding:40px 32px;">
@@ -79,10 +79,10 @@ function baseTemplate(content: string, requestedTheme: 'admin' | 'general' = 'ge
     </div>
     <div style="padding:24px 32px;background:${theme.bg};border-top:1px solid ${BORDER};text-align:center;">
       <p style="margin:0;font-size:12px;color:#64748b;font-weight:500;">
-        This is a secure automated transmission from PayoutPower.
+        This is a secure automated transmission from IncentivePro.
       </p>
       <p style="margin:4px 0 0;font-size:11px;color:#94a3b8;">
-        Datamation Group &copy; ${new Date().getFullYear()}
+        IncentivePro Group &copy; ${new Date().getFullYear()}
       </p>
     </div>
   </div>
@@ -115,7 +115,7 @@ export async function sendMail({ to, subject, html }: { to: string; subject: str
 
 export async function sendWelcomeEmail(to: string, userName: string, tempPassword: string) {
   const html = baseTemplate(`
-    <h2 style="margin:0 0 12px;color:${DARK};font-size:20px;font-weight:800;">Welcome to PayoutPower, ${userName}!</h2>
+    <h2 style="margin:0 0 12px;color:${DARK};font-size:20px;font-weight:800;">Welcome to IncentivePro, ${userName}!</h2>
     <p style="margin:0 0 24px;color:#475569;line-height:1.6;">Your professional incentive account is now active. Use the credentials below to access your dashboard.</p>
     <div style="background:#f1f5f9;border:1px solid ${BORDER};border-radius:12px;padding:24px;margin:0 0 24px;">
       <table style="width:100%;border-collapse:collapse;">
@@ -126,7 +126,7 @@ export async function sendWelcomeEmail(to: string, userName: string, tempPasswor
     <p style="margin:0 0 8px;color:#475569;font-size:14px;font-weight:500;">Please secure your account by changing this password upon your first entry.</p>
     ${btn('Initial Login', `${APP_URL}/login`)}
   `, 'general');
-  return sendMail({ to, subject: 'Welcome to PayoutPower — Your Account is Ready', html });
+  return sendMail({ to, subject: 'Welcome to IncentivePro — Your Account is Ready', html });
 }
 
 export async function sendAdminSignupNotification(
@@ -187,7 +187,7 @@ export async function sendUserStatusUpdate(
     <p style="margin:0 0 24px;color:#475569;line-height:1.6;">Hello ${userName},</p>
     ${isApproved
       ? `<p style="margin:0 0 24px;color:#475569;line-height:1.6;font-size:15px;">
-           Great news — your PayoutPower account has been <strong style="color:#10b981;">successfully authorized</strong>. 
+           Great news — your IncentivePro account has been <strong style="color:#10b981;">successfully authorized</strong>. 
            You can now access all features of the incentive tracking system.
          </p>
          ${btn('Launch Dashboard', `${APP_URL}/login`, 'general')}`
@@ -197,7 +197,7 @@ export async function sendUserStatusUpdate(
          </p>`
     }
   `, 'general');
-  return sendMail({ to: userEmail, subject: `Your PayoutPower Account Has Been ${isApproved ? 'Approved' : 'Rejected'}`, html });
+  return sendMail({ to: userEmail, subject: `Your IncentivePro Account Has Been ${isApproved ? 'Approved' : 'Rejected'}`, html });
 }
 
 export async function sendAdminUserUpdateNotification(
@@ -225,14 +225,14 @@ export async function sendPasswordResetEmail(to: string, userName: string, token
   const html = baseTemplate(`
     <h2 style="margin:0 0 12px;color:${DARK};font-size:20px;font-weight:800;">Password Reset Request</h2>
     <p style="margin:0 0 24px;color:#475569;line-height:1.6;font-size:15px;">
-      Hello ${userName}, we received a request to securely reset your PayoutPower credentials. 
+      Hello ${userName}, we received a request to securely reset your IncentivePro credentials. 
       This secure link expires in 60 minutes.
     </p>
     ${btn('Secure Password Reset', resetUrl, 'general')}
     <p style="margin:32px 0 12px;color:#64748b;font-size:11px;text-transform:uppercase;font-weight:700;letter-spacing:1px;">Direct Access Link</p>
     <div style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;word-break:break-all;font-family:monospace;font-size:11px;color:#64748b;">${resetUrl}</div>
   `, 'general');
-  return sendMail({ to, subject: 'PayoutPower — Password Reset Instructions', html });
+  return sendMail({ to, subject: 'IncentivePro — Password Reset Instructions', html });
 }
 
 export async function sendIncentiveUpdate(to: string, userName: string, action: string, amount: number) {
@@ -245,7 +245,7 @@ export async function sendIncentiveUpdate(to: string, userName: string, action: 
     </div>
     ${btn('Access Portal', `${APP_URL}/dashboard`, 'general')}
   `, 'general');
-  return sendMail({ to, subject: `PayoutPower — ${action}`, html });
+  return sendMail({ to, subject: `IncentivePro — ${action}`, html });
 }
 
 export async function sendBatchApprovedEmail(to: string, userName: string, batchName: string, amount: number, referenceNumber?: string) {

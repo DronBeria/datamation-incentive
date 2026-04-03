@@ -8,7 +8,7 @@ function createWindow() {
     mainWindow = new BrowserWindow({
         width: 1440,
         height: 900,
-        title: "PayoutPower — Industrial Incentive Suite",
+        title: "IncentivePro — Industrial Incentive Suite",
         autoHideMenuBar: true, // Professional desktop look
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
@@ -18,7 +18,7 @@ function createWindow() {
     });
 
     // Pointing to your production Vercel deployment
-    const productionUrl = 'https://datamation-incentive.vercel.app';
+    const productionUrl = 'https://IncentivePro-incentive.vercel.app';
     const startUrl = process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : productionUrl;
 
     mainWindow.loadURL(startUrl);
@@ -36,7 +36,7 @@ function createWindow() {
  */
 ipcMain.handle('save-backup', async (event, { entity, data }) => {
     try {
-        const backupDir = path.join(app.getPath('documents'), 'PayoutPower', 'Backups');
+        const backupDir = path.join(app.getPath('documents'), 'IncentivePro', 'Backups');
         if (!fs.existsSync(backupDir)) {
             fs.mkdirSync(backupDir, { recursive: true });
         }

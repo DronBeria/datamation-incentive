@@ -8,7 +8,7 @@ if (!rawSecret && process.env.NODE_ENV === "production") {
   console.warn("WARNING: JWT_SECRET environment variable is not set! Using development fallback. This is INSECURE for production.");
 }
 const JWT_SECRET = new TextEncoder().encode(
-  rawSecret || "payoutpower-dev-secret-change-in-production-2026"
+  rawSecret || "IncentivePro-dev-secret-change-in-production-2026"
 );
 
 const TOKEN_EXPIRY = "8h";
@@ -28,16 +28,16 @@ export async function signToken(payload: UserPayload): Promise<string> {
     .setProtectedHeader({ alg: "HS256" })
     .setExpirationTime(TOKEN_EXPIRY)
     .setIssuedAt()
-    .setIssuer("payoutpower-ims")
-    .setAudience("payoutpower-client")
+    .setIssuer("IncentivePro-ims")
+    .setAudience("IncentivePro-client")
     .sign(JWT_SECRET);
 }
 
 export async function verifyToken(token: string): Promise<UserPayload | null> {
   try {
     const { payload } = await jwtVerify(token, JWT_SECRET, {
-      issuer: "payoutpower-ims",
-      audience: "payoutpower-client",
+      issuer: "IncentivePro-ims",
+      audience: "IncentivePro-client",
     });
     return payload as unknown as UserPayload;
   } catch {

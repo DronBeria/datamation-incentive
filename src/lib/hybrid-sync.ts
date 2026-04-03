@@ -1,5 +1,5 @@
 /**
- * PayoutPower Industrial Hybrid Sync Engine
+ * IncentivePro Industrial Hybrid Sync Engine
  * Handles the bridge between Cloud (Supabase) and Local (Disk/Electron)
  */
 

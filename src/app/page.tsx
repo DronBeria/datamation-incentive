@@ -185,7 +185,7 @@ export default function LoginPage() {
       features_list: item.features.map(f => `${f.title}: ${f.usage}`).join("\n\n")
     }));
 
-    exportToPDF("PayoutPower IMS User Guide", columns, formattedData, "payoutpower_user_guide");
+    exportToPDF("IncentivePro IMS User Guide", columns, formattedData, "IncentivePro_user_guide");
   };
 
   if (loading) {
@@ -288,7 +288,7 @@ export default function LoginPage() {
 
         {/* Bottom: Footer */}
         <div className="relative z-10 flex items-center justify-between">
-          <p className="text-[10px] text-slate-700 font-bold uppercase tracking-[0.3em]">© 2026 PayoutPower IMS</p>
+          <p className="text-[10px] text-slate-700 font-bold uppercase tracking-[0.3em]">© 2026 IncentivePro IMS</p>
           <div className="flex items-center gap-3">
             <span className="text-[10px] text-slate-700 font-semibold">Secured by</span>
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/5 border border-white/10">
@@ -663,7 +663,7 @@ export default function LoginPage() {
                     <Badge className="bg-indigo-50 text-indigo-600 border-indigo-100 px-3 py-1 font-black text-[10px] uppercase tracking-widest">Introduction</Badge>
                     <h1 className="text-4xl font-black text-slate-900 tracking-tighter leading-[1.1]">The Incentive Engine Architecture.</h1>
                     <p className="text-lg text-slate-500 font-medium leading-relaxed max-w-2xl">
-                      Welcome to PayoutPower. This system is designed for uncompromising financial accuracy. Below you will find detailed logic explanations for every module.
+                      Welcome to IncentivePro. This system is designed for uncompromising financial accuracy. Below you will find detailed logic explanations for every module.
                     </p>
                   </div>
 

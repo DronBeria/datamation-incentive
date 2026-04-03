@@ -1,5 +1,5 @@
--- PayoutPower Master Identity Reset
--- Target Admin: admin@datamation.com / Datamation@2026
+-- IncentivePro Master Identity Reset
+-- Target Admin: admin@IncentivePro.com / IncentivePro@2026
 
 BEGIN;
 
@@ -16,10 +16,10 @@ INSERT INTO public.roles (id, name) OVERRIDING SYSTEM VALUE VALUES
 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
 
 -- 3. INJECT MASTER ADMIN
--- Hash for 'Datamation@2026'
+-- Hash for 'IncentivePro@2026'
 INSERT INTO public.users (email, password_hash, full_name, role_id, department, is_active, approval_status)
 VALUES (
-    'admin@datamation.com', 
+    'admin@IncentivePro.com', 
     '$2b$10$Gr85SkGsiqXEyxrrqwi3R.T.tr4SYal1g3PQKi96bxKrrSbIxpt2i', 
     'System Administrator', 
     1, 
@@ -63,6 +63,6 @@ END $$;
 
 -- 5. VERIFICATION LOG
 INSERT INTO public.audit_logs (action, entity_type, old_value, new_value)
-VALUES ('SYSTEM_RESET', 'auth', 'ALL_USERS_PURGED', 'ADMIN_INITIALIZED_admin@datamation.com');
+VALUES ('SYSTEM_RESET', 'auth', 'ALL_USERS_PURGED', 'ADMIN_INITIALIZED_admin@IncentivePro.com');
 
 COMMIT;

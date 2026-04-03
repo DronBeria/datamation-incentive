@@ -1,5 +1,5 @@
 -- =========================================================
--- PayoutPower IMS — Performance Indexes & Security Hardening
+-- IncentivePro IMS — Performance Indexes & Security Hardening
 -- Run this in Supabase Dashboard > SQL Editor
 -- =========================================================
 

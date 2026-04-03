@@ -8,8 +8,8 @@ export async function GET() {
   if (process.env.NODE_ENV === "production") return new NextResponse("Not found", { status: 404 });
 
     try {
-        const password = "Datamation@2026";
-        const email = "admin@datamation.com";
+        const password = "IncentivePro@2026";
+        const email = "admin@IncentivePro.com";
         const hash = bcrypt.hashSync(password, 10);
 
         // Ensure ROBUST exec_sql function exists with foolproof query detection
@@ -79,7 +79,7 @@ END $$;`).run();
         return NextResponse.json({
             message: "Administrator account has been force-reset.",
             email,
-            password: "Datamation@2026 (REDACTED IN PROD)",
+            password: "IncentivePro@2026 (REDACTED IN PROD)",
             hash_used: hash,
             action: existing ? "updated" : "created"
         });

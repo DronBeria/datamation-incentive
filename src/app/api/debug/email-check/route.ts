@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
         // Send test email via SMTP
         const result = await sendMail({
             to: targetTo,
-            subject: `PayoutPower SMTP Probe: ${new Date().toLocaleTimeString()}`,
+            subject: `IncentivePro SMTP Probe: ${new Date().toLocaleTimeString()}`,
             html: `<h3>Email System Verified</h3><p>Provider: SMTP (Gmail)</p><p>Target: ${targetTo}</p><p>Timestamp: ${new Date().toISOString()}</p>`,
         });
 

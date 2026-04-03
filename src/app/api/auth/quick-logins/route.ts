@@ -53,8 +53,8 @@ export async function GET() {
         if (results.length === 0) {
             console.log("[QUICK_SWITCH] No live data found. Using fallbacks.");
             return NextResponse.json([
-                { label: "admin", email: "admin@datamation.com", full_name: "Master Admin" },
-                { label: "manager", email: "manager@datamation.com", full_name: "Regional Manager" }
+                { label: "admin", email: "admin@IncentivePro.com", full_name: "Master Admin" },
+                { label: "manager", email: "manager@IncentivePro.com", full_name: "Regional Manager" }
             ]);
         }
 
@@ -64,8 +64,8 @@ export async function GET() {
     } catch (e: any) {
         console.error("[QUICK_SWITCH] Handshake Error:", e.message);
         return NextResponse.json([
-            { label: "admin", email: "admin@datamation.com", full_name: "Master Admin" },
-            { label: "manager", email: "manager@datamation.com", full_name: "Regional Manager" }
+            { label: "admin", email: "admin@IncentivePro.com", full_name: "Master Admin" },
+            { label: "manager", email: "manager@IncentivePro.com", full_name: "Regional Manager" }
         ]);
     }
 }

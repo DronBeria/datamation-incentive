@@ -198,7 +198,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             {/* Minimal Dashboard Footer */}
             <div className="mt-12 py-6 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">© 2026 PayoutPower IMS</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">© 2026 IncentivePro IMS</p>
               <p className="text-[10px] sm:text-[11px] font-medium text-slate-400 tracking-tight">
                 Developed and Powered by{" "}
                 <a

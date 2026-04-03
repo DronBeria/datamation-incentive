@@ -1,6 +1,6 @@
-# PayoutPower Industrial Workflow: Separation of Duties
+# IncentivePro Industrial Workflow: Separation of Duties
 
-The PayoutPower system is engineered with a strict multi-tier approval workflow to ensure financial integrity and prevent unauthorized disbursements.
+The IncentivePro system is engineered with a strict multi-tier approval workflow to ensure financial integrity and prevent unauthorized disbursements.
 
 ## 🏛️ Administrator (The Final Approver)
 **Purpose:** Acting as the ultimate fiscal gatekeeper and personnel manager.

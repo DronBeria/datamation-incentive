@@ -15,8 +15,8 @@ export async function POST(req: NextRequest) {
         await db.prepare(`
             INSERT INTO public.users (email, password_hash, full_name, role_id, department, is_active)
             VALUES 
-            ('vikram.manager@payoutpower.corp', '$2b$10$7Z6oT5.Qp9BfT4p8T3p1u.Vn/p8wG9m5Yp/Q/U/X/Z/R/Z/p/p/p/', 'Vikram Singh', 2, 'North Region', TRUE),
-            ('sarah.manager@payoutpower.corp', '$2b$10$7Z6oT5.Qp9BfT4p8T3p1u.Vn/p8wG9m5Yp/Q/U/X/Z/R/Z/p/p/p/', 'Sarah D''souza', 2, 'South Region', TRUE)
+            ('vikram.manager@IncentivePro.corp', '$2b$10$7Z6oT5.Qp9BfT4p8T3p1u.Vn/p8wG9m5Yp/Q/U/X/Z/R/Z/p/p/p/', 'Vikram Singh', 2, 'North Region', TRUE),
+            ('sarah.manager@IncentivePro.corp', '$2b$10$7Z6oT5.Qp9BfT4p8T3p1u.Vn/p8wG9m5Yp/Q/U/X/Z/R/Z/p/p/p/', 'Sarah D''souza', 2, 'South Region', TRUE)
             ON CONFLICT (email) DO NOTHING
         `).run();
 
@@ -34,8 +34,8 @@ export async function POST(req: NextRequest) {
         await db.prepare(`
             INSERT INTO public.users (email, password_hash, full_name, role_id, manager_id, department, is_active)
             VALUES 
-            ('rahul.sales@payoutpower.corp', '$2b$10$7Z6oT5.Qp9BfT4p8T3p1u.Vn/p8wG9m5Yp/Q/U/X/Z/R/Z/p/p/p/', 'Rahul Mehta', 4, (SELECT id FROM public.users WHERE email='vikram.manager@payoutpower.corp'), 'Sales', TRUE),
-            ('priya.sales@payoutpower.corp', '$2b$10$7Z6oT5.Qp9BfT4p8T3p1u.Vn/p8wG9m5Yp/Q/U/X/Z/R/Z/p/p/p/', 'Priya Sharma', 4, (SELECT id FROM public.users WHERE email='vikram.manager@payoutpower.corp'), 'Sales', TRUE)
+            ('rahul.sales@IncentivePro.corp', '$2b$10$7Z6oT5.Qp9BfT4p8T3p1u.Vn/p8wG9m5Yp/Q/U/X/Z/R/Z/p/p/p/', 'Rahul Mehta', 4, (SELECT id FROM public.users WHERE email='vikram.manager@IncentivePro.corp'), 'Sales', TRUE),
+            ('priya.sales@IncentivePro.corp', '$2b$10$7Z6oT5.Qp9BfT4p8T3p1u.Vn/p8wG9m5Yp/Q/U/X/Z/R/Z/p/p/p/', 'Priya Sharma', 4, (SELECT id FROM public.users WHERE email='vikram.manager@IncentivePro.corp'), 'Sales', TRUE)
             ON CONFLICT (email) DO NOTHING
         `).run();
 
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
         await db.prepare(`
             INSERT INTO public.users (email, password_hash, full_name, role_id, manager_id, department, is_active)
             VALUES 
-            ('amit.sales@payoutpower.corp', '$2b$10$7Z6oT5.Qp9BfT4p8T3p1u.Vn/p8wG9m5Yp/Q/U/X/Z/R/Z/p/p/p/', 'Amit Verma', 4, (SELECT id FROM public.users WHERE email='sarah.manager@payoutpower.corp'), 'Field Sales', TRUE)
+            ('amit.sales@IncentivePro.corp', '$2b$10$7Z6oT5.Qp9BfT4p8T3p1u.Vn/p8wG9m5Yp/Q/U/X/Z/R/Z/p/p/p/', 'Amit Verma', 4, (SELECT id FROM public.users WHERE email='sarah.manager@IncentivePro.corp'), 'Field Sales', TRUE)
             ON CONFLICT (email) DO NOTHING
         `).run();
 
@@ -52,31 +52,31 @@ export async function POST(req: NextRequest) {
             INSERT INTO public.user_scheme_assignments (user_id, scheme_id, start_date)
             SELECT u.id, s.id, CURRENT_DATE
             FROM public.users u, public.incentive_schemes s
-            WHERE u.email = 'rahul.sales@payoutpower.corp' AND s.name = 'Alpha Standard'
+            WHERE u.email = 'rahul.sales@IncentivePro.corp' AND s.name = 'Alpha Standard'
             UNION ALL
             SELECT u.id, s.id, CURRENT_DATE
             FROM public.users u, public.incentive_schemes s
-            WHERE u.email = 'priya.sales@payoutpower.corp' AND s.name = 'Beta Tiered'
+            WHERE u.email = 'priya.sales@IncentivePro.corp' AND s.name = 'Beta Tiered'
             UNION ALL
             SELECT u.id, s.id, CURRENT_DATE
             FROM public.users u, public.incentive_schemes s
-            WHERE u.email = 'amit.sales@payoutpower.corp' AND s.name = 'Gamma Per Unit'
+            WHERE u.email = 'amit.sales@IncentivePro.corp' AND s.name = 'Gamma Per Unit'
         `).run();
 
         // 6. Seed Sales Logs
         await db.prepare(`
             INSERT INTO public.sales_logs (salesperson_id, client_name, deal_value, product, sale_date, scheme_id, calculated_commission, status)
             SELECT u.id, 'Global Corp', 100000, 'Cloud Suite', CURRENT_DATE - INTERVAL '5 days', (SELECT id FROM public.incentive_schemes WHERE name='Alpha Standard'), 5000, 'earned'
-            FROM public.users u WHERE u.email = 'rahul.sales@payoutpower.corp'
+            FROM public.users u WHERE u.email = 'rahul.sales@IncentivePro.corp'
         `).run();
 
         await db.prepare(`
             INSERT INTO public.sales_logs (salesperson_id, client_name, deal_value, product, sale_date, scheme_id, calculated_commission, status)
             SELECT u.id, 'Mega Tech', 800000, 'ERP Enterprise', CURRENT_DATE - INTERVAL '8 days', (SELECT id FROM public.incentive_schemes WHERE name='Beta Tiered'), 64000, 'earned'
-            FROM public.users u WHERE u.email = 'priya.sales@payoutpower.corp'
+            FROM public.users u WHERE u.email = 'priya.sales@IncentivePro.corp'
         `).run();
 
-        return NextResponse.json({ message: "Demo biosphere successfully initialized. Log in as vikram.manager@payoutpower.corp or any salesperson to begin." });
+        return NextResponse.json({ message: "Demo biosphere successfully initialized. Log in as vikram.manager@IncentivePro.corp or any salesperson to begin." });
     } catch (err: any) {
         return NextResponse.json({ error: err.message }, { status: 500 });
     }

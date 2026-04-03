@@ -111,7 +111,7 @@ export function unauthorizedApiResponse(message = "Invalid or missing API key") 
         {
             status: 403,
             headers: {
-                "WWW-Authenticate": `Bearer realm="payoutpower-api"`,
+                "WWW-Authenticate": `Bearer realm="IncentivePro-api"`,
             },
         }
     );
