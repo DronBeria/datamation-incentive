@@ -25,6 +25,7 @@ export async function GET(req: NextRequest) {
         let query = supabase
             .from('adjustments')
             .select('*')
+            .is('deleted_at', null)
             .order('created_at', { ascending: false });
 
         const role = (session.role || "").toLowerCase();

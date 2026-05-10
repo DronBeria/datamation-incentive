@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { useAdjustments, useInvalidateAdjustments } from "@/lib/hooks";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,9 +39,9 @@ const ADJ_CSV_COLUMNS = [
 
 export default function AdjustmentsPage() {
     const { user } = useAuth();
-    const [adjustments, setAdjustments] = useState<any[]>([]);
+    const { data: adjustments = [], isLoading: loading } = useAdjustments();
+    const invalidateAdjustments = useInvalidateAdjustments();
     const [users, setUsers] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
     const [showCreate, setShowCreate] = useState(false);
     const [creating, setCreating] = useState(false);
     const [search, setSearch] = useState("");
@@ -50,21 +51,12 @@ export default function AdjustmentsPage() {
         user_id: "", amount: "", reason: "", type: "clawback",
     });
 
-    const fetchData = async () => {
-        setLoading(true);
-        try {
-            const [adjRes, userRes] = await Promise.all([
-                fetch("/api/adjustments"),
-                fetch("/api/users"),
-            ]);
-            const adjData = await adjRes.json();
-            const userData = await userRes.json();
-            if (Array.isArray(adjData)) setAdjustments(adjData);
-            if (Array.isArray(userData)) setUsers(userData.filter((u: any) => u.role === "salesperson"));
-        } finally { setLoading(false); }
-    };
-
-    useEffect(() => { fetchData(); }, []);
+    useEffect(() => {
+        fetch("/api/users")
+            .then(r => r.json())
+            .then(d => { if (Array.isArray(d)) setUsers(d.filter((u: any) => u.role === "salesperson")); })
+            .catch(() => {});
+    }, []);
 
     const handleCreate = async () => {
         if (!form.user_id || !form.amount || !form.reason) {
@@ -81,7 +73,7 @@ export default function AdjustmentsPage() {
                 toast.success("Fiscal adjustment successfully indexed");
                 setShowCreate(false);
                 setForm({ user_id: "", amount: "", reason: "", type: "clawback" });
-                fetchData();
+                invalidateAdjustments();
             } else {
                 const d = await res.json().catch(() => ({}));
                 toast.error(d?.error || "Failed to create adjustment — please try again");
@@ -98,7 +90,7 @@ export default function AdjustmentsPage() {
             });
             if (res.ok) {
                 toast.success(`Adjustment ${status} successfully`);
-                fetchData();
+                invalidateAdjustments();
             } else {
                 const d = await res.json().catch(() => ({}));
                 toast.error(d?.error || "Status update failed");
@@ -113,7 +105,7 @@ export default function AdjustmentsPage() {
             const res = await fetch(`/api/adjustments/${adj.id}`, { method: "DELETE" });
             if (res.ok) {
                 toast.success("Adjustment permanently deleted");
-                fetchData();
+                invalidateAdjustments();
             } else {
                 const d = await res.json();
                 toast.error(d.error || "Cannot delete this adjustment");

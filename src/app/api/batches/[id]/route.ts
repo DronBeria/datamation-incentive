@@ -30,9 +30,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       .from('incentive_batches')
       .select('*')
       .eq('id', id)
+      .is('deleted_at', null)
       .single();
 
     if (bErr || !batch) return NextResponse.json({ error: "Batch not found" }, { status: 404 });
+
+    // ── Optimistic locking: reject stale writes ───────────────
+    const clientVersion = req.headers.get('X-Batch-Version');
+    if (clientVersion !== null && batch.version !== undefined) {
+      const cv = parseInt(clientVersion, 10);
+      if (!isNaN(cv) && batch.version !== cv) {
+        return NextResponse.json(
+          { error: "Stale data — this batch was modified by someone else. Please refresh and try again.", code: "VERSION_CONFLICT" },
+          { status: 409 }
+        );
+      }
+    }
 
     const oldStatus = batch.status;
     let newStatus = oldStatus;
@@ -308,6 +321,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
       .from('incentive_batches')
       .select('status, batch_name, total_amount')
       .eq('id', id)
+      .is('deleted_at', null)
       .single();
 
     if (bErr || !batch) return NextResponse.json({ error: "Batch not found" }, { status: 404 });
@@ -317,27 +331,29 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: "Cannot delete an approved or paid batch." }, { status: 400 });
     }
 
-    // 2. Reset associated items back to their original pool
-    const { data: batchItems } = await supabase.from('batch_items').select('sales_log_id, adjustment_id').eq('batch_id', id);
+    // 2. Revert associated items back to their pool
+    const { data: batchItems } = await supabase
+      .from('batch_items')
+      .select('sales_log_id, adjustment_id')
+      .eq('batch_id', id);
 
     if (batchItems) {
       const logIds = batchItems.filter(i => i.sales_log_id).map(i => i.sales_log_id);
       const adjIds = batchItems.filter(i => i.adjustment_id).map(i => i.adjustment_id);
 
-      // Revert sales logs
       if (logIds.length > 0) {
         await supabase.from('sales_logs').update({ status: 'earned' }).in('id', logIds);
       }
-
-      // Revert adjustments
       if (adjIds.length > 0) {
         await supabase.from('adjustments').update({ status: 'pending' }).in('id', adjIds);
       }
     }
 
-    // 3. Delete items and batch
-    await supabase.from('batch_items').delete().eq('batch_id', id);
-    const { error: delErr } = await supabase.from('incentive_batches').delete().eq('id', id);
+    // 3. Soft delete — keep the record for audit trail, just mark it deleted
+    const { error: delErr } = await supabase
+      .from('incentive_batches')
+      .update({ deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq('id', id);
 
     if (delErr) throw delErr;
 

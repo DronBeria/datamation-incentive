@@ -39,7 +39,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const session = await getSession();
     // Only admin and manager can delete — accounts team CANNOT delete adjustments
     if (!session || !["admin", "manager"].includes(session.role)) {
@@ -59,13 +59,14 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
             }, { status: 400 });
         }
 
-        await db.prepare("DELETE FROM public.adjustments WHERE id = ?").run(id);
+        // Soft delete — preserves the fiscal record for audit trail
+        await db.prepare("UPDATE public.adjustments SET deleted_at = NOW() WHERE id = ?").run(id);
 
         await db.prepare(
             "INSERT INTO public.audit_logs (user_id, action, entity_type, entity_id, old_value) VALUES (?, 'DELETE', 'adjustment', ?, ?)"
         ).run(session.id, id, JSON.stringify({ type: adjustment.type, amount: adjustment.amount, user_id: adjustment.user_id, reason: adjustment.reason }));
 
-        return NextResponse.json({ message: "Adjustment permanently deleted" });
+        return NextResponse.json({ message: "Adjustment deleted" });
     } catch (err: any) {
         console.error("[ADJUSTMENT_DELETE_ERROR]", err.message);
         return NextResponse.json({ error: err.message }, { status: 500 });

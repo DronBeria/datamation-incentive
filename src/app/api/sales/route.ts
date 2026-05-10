@@ -23,16 +23,24 @@ export async function GET(req: NextRequest) {
     const dateFrom = url.searchParams.get("from");
     const dateTo = url.searchParams.get("to");
     const excludeFlagged = url.searchParams.get("exclude_flagged") === "true";
+    const limitParam = url.searchParams.get("limit");
+    const pageParam = url.searchParams.get("page");
 
     const supabase = getSupabase();
+    const withPagination = !!limitParam;
+    const limit = withPagination ? Math.min(parseInt(limitParam!, 10) || 50, 200) : undefined;
+    const page = Math.max(0, parseInt(pageParam || "0", 10));
+    const offset = withPagination ? page * limit! : undefined;
+
+    const selectStr = `
+      *,
+      salesperson_name:users!salesperson_id(full_name),
+      scheme:incentive_schemes!scheme_id(name, calculation_type, base_rate)
+    `;
 
     let query = supabase
       .from('sales_logs')
-      .select(`
-        *,
-        salesperson_name:users!salesperson_id(full_name),
-        scheme:incentive_schemes!scheme_id(name, calculation_type, base_rate)
-      `)
+      .select(selectStr, withPagination ? { count: 'exact' } : undefined)
       .order('sale_date', { ascending: false });
 
     const role = (session.role || "").toLowerCase();
@@ -49,19 +57,23 @@ export async function GET(req: NextRequest) {
     if (excludeFlagged) query = query.neq('dispute_status', 'flagged');
     if (dateFrom) query = query.gte('sale_date', dateFrom);
     if (dateTo) query = query.lte('sale_date', dateTo);
+    if (withPagination) query = (query as any).range(offset, offset! + limit! - 1);
 
-    const { data: logs, error } = await query;
+    const { data: logs, error, count } = await query as any;
     if (error) throw error;
 
-    const flattened = (logs || []).map(l => ({
+    const flattened = (logs || []).map((l: any) => ({
       ...l,
       salesperson_name: l.salesperson_name?.full_name || 'Unknown',
       scheme_name: l.scheme?.name || null,
       calculation_type: l.scheme?.calculation_type || null,
-      base_rate: l.scheme?.base_rate || 0
+      base_rate: l.scheme?.base_rate || 0,
     }));
 
-    return NextResponse.json(flattened);
+    const headers: Record<string, string> = {};
+    if (withPagination && count !== null) headers['X-Total-Count'] = String(count);
+
+    return NextResponse.json(flattened, { headers });
   } catch (error: any) {
     console.error("[SALES_GET_ERROR]", error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });

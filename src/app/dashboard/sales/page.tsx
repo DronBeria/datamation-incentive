@@ -1,7 +1,8 @@
 "use client";
 
 import { useAuth } from "@/lib/auth-context";
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { useSales, useInvalidateSales } from "@/lib/hooks";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +20,6 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { syncToLocal } from "@/lib/hybrid-sync";
 import { downloadCSV, exportToExcel, exportToPDF } from "@/lib/export-utils";
 import {
   Plus, Loader2, Search, CheckCircle2, XCircle, MoreHorizontal,
@@ -51,8 +51,6 @@ const SALES_CSV_COLUMNS = [
 
 export default function SalesPage() {
   const { user } = useAuth();
-  const [logs, setLogs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateRange, setDateRange] = useState({ from: "", to: "" });
@@ -68,44 +66,22 @@ export default function SalesPage() {
     is_custom: false, custom_commission: "", scheme_id: "",
   });
 
-  const fetchLogs = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (dateRange.from) params.set("from", dateRange.from);
-      if (dateRange.to) params.set("to", dateRange.to);
-      const qs = params.toString();
-      const res = await fetch(`/api/sales${qs ? `?${qs}` : ""}`);
-      if (!res.ok) throw new Error("Connection lost");
-      const d = await res.json();
-      if (Array.isArray(d)) {
-        setLogs(d);
-        try { syncToLocal("sales_logs", d); } catch (e) { console.warn("Local sync deferred", e); }
-      }
-    } catch (err) {
-      console.error("Fetch sales logs error:", err);
-      toast.error("Network connection unstable");
-    } finally { setLoading(false); }
-  }, [dateRange]);
+  const queryParams = Object.fromEntries([
+    dateRange.from ? ["from", dateRange.from] : [],
+    dateRange.to ? ["to", dateRange.to] : [],
+  ].filter((e): e is [string, string] => e.length > 0));
+
+  const { data: logs = [], isLoading: loading } = useSales(queryParams);
+  const invalidateSales = useInvalidateSales();
 
   useEffect(() => {
-    fetchLogs();
     fetch("/api/users?role=salesperson")
-      .then(async r => {
-        if (!r.ok) throw new Error();
-        const d = await r.json();
-        if (Array.isArray(d)) setUsers(d);
-      })
-      .catch(() => { });
-
+      .then(async r => { const d = await r.json(); if (Array.isArray(d)) setUsers(d); })
+      .catch(() => {});
     fetch("/api/schemes")
-      .then(async r => {
-        if (!r.ok) throw new Error();
-        const d = await r.json();
-        if (Array.isArray(d)) setSchemes(d);
-      })
-      .catch(() => { });
-  }, [fetchLogs]);
+      .then(async r => { const d = await r.json(); if (Array.isArray(d)) setSchemes(d); })
+      .catch(() => {});
+  }, []);
 
   const handleCreate = async () => {
     if (!form.client_name || !form.deal_value || !form.sale_date) {
@@ -129,7 +105,7 @@ export default function SalesPage() {
         toast.success("Sale logged successfully");
         setShowCreate(false);
         setForm({ salesperson_id: "", client_name: "", deal_value: "", product: "", sale_date: "", notes: "", quantity: "1", is_custom: false, custom_commission: "", scheme_id: "" });
-        fetchLogs();
+        invalidateSales();
       } else {
         const errorData = await res.json();
         toast.error(errorData.error || "Submission rejected by server");
@@ -150,7 +126,7 @@ export default function SalesPage() {
       });
       if (res.ok) {
         toast.success(`Transaction successfully ${action === "approve" ? "approved" : "rejected"}`);
-        fetchLogs();
+        invalidateSales();
       } else {
         const d = await res.json();
         toast.error(d.error || "Review action failed");
@@ -169,7 +145,7 @@ export default function SalesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, note }),
       });
-      if (res.ok) { toast.success(`Dispute status updated`); fetchLogs(); }
+      if (res.ok) { toast.success(`Dispute status updated`); invalidateSales(); }
       else { const d = await res.json(); toast.error(d.error || "Action failed"); }
     } catch { toast.error("Dispute update failed"); }
     finally { setReviewing(null); }
@@ -182,7 +158,7 @@ export default function SalesPage() {
       const res = await fetch(`/api/sales/${logId}`, { method: "DELETE" });
       if (res.ok) {
         toast.success("Sale record permanently deleted");
-        fetchLogs();
+        invalidateSales();
       } else {
         const d = await res.json();
         toast.error(d.error || "Cannot delete this record");

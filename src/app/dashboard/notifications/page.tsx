@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useState, useMemo } from "react";
+import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useDeleteNotification } from "@/lib/hooks";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,53 +20,31 @@ const NOTIF_CONFIG: Record<string, { icon: any; color: string; bg: string; dot: 
 };
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: notifications = [], isLoading: loading } = useNotifications();
+  const markOneReadMut = useMarkNotificationRead();
+  const markAllReadMut = useMarkAllNotificationsRead();
+  const deleteNotifMut = useDeleteNotification();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "unread" | "read">("all");
 
-  const fetchNotifications = async () => {
-    setLoading(true);
-    try {
-      const r = await fetch("/api/notifications");
-      const d = await r.json();
-      if (Array.isArray(d)) setNotifications(d);
-    } catch {
-      toast.error("Inbox connection failed");
-    } finally {
-      setLoading(false);
-    }
+  const markAllRead = () => {
+    markAllReadMut.mutate(undefined, {
+      onSuccess: () => toast.success("Inbox sanitized"),
+      onError: () => toast.error("Operation failed"),
+    });
   };
 
-  useEffect(() => { fetchNotifications(); }, []);
-
-  const markAllRead = async () => {
-    try {
-      await fetch("/api/notifications", { method: "PATCH" });
-      setNotifications(prev => prev.map(n => ({ ...n, is_read: 1 })));
-      toast.success("Inbox sanitized");
-    } catch {
-      toast.error("Operation failed");
-    }
+  const markOneRead = (id: number) => {
+    markOneReadMut.mutate(id, {
+      onError: () => toast.error("Failed to update notification"),
+    });
   };
 
-  const markOneRead = async (id: number) => {
-    try {
-      await fetch(`/api/notifications/${id}`, { method: "PATCH" });
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: 1 } : n));
-    } catch {
-      toast.error("Failed to update notification");
-    }
-  };
-
-  const deleteNotif = async (id: number) => {
-    try {
-      await fetch(`/api/notifications/${id}`, { method: "DELETE" });
-      setNotifications(prev => prev.filter(n => n.id !== id));
-      toast.success("Alert purged");
-    } catch {
-      toast.error("Failed to delete notification");
-    }
+  const deleteNotif = (id: number) => {
+    deleteNotifMut.mutate(id, {
+      onSuccess: () => toast.success("Alert purged"),
+      onError: () => toast.error("Failed to delete notification"),
+    });
   };
 
   const handleExportCSV = () => {

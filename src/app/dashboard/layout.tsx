@@ -3,6 +3,7 @@
 import { useAuth } from "@/lib/auth-context";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useUnreadCount } from "@/lib/hooks";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -55,18 +56,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  useEffect(() => {
-    fetch("/api/notifications")
-      .then(r => r.json())
-      .then(d => {
-        if (Array.isArray(d)) {
-          setUnreadCount(d.filter((n: any) => !n.is_read).length);
-        }
-      })
-      .catch(() => {});
-  }, [pathname]);
+  // React Query polls every 30 s — no manual fetch needed
+  const unreadCount = useUnreadCount();
 
   useEffect(() => {
     if (!loading && !user) router.push("/");

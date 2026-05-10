@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/lib/auth-context";
-import { useEffect, useState, useCallback, useMemo, Suspense } from "react";
+import { useEffect, useState, useMemo, Suspense } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
@@ -25,7 +25,8 @@ import {
   TrendingUp, Clock, Banknote, Layers, Calculator, Info,
   Zap, Trash2
 } from "lucide-react";
-import { syncToLocal } from "@/lib/hybrid-sync";
+import { useQueryClient } from "@tanstack/react-query";
+import { useBatches, useInvalidateBatches, QUERY_KEYS } from "@/lib/hooks";
 import { DateRangePicker } from "@/components/date-range-picker";
 import { downloadCSV, exportToExcel, exportToPDF, downloadPDF } from "@/lib/export-utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -323,8 +324,6 @@ function BatchDetailModal({ batch, onClose, user, onAction, actionLoading }: any
 function BatchesContent() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
-  const [batches, setBatches] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "all");
@@ -339,6 +338,15 @@ function BatchesContent() {
   const [selectedLogs, setSelectedLogs] = useState<Set<string>>(new Set());
   const [logSearch, setLogSearch] = useState("");
 
+  const { data: batches = [], isLoading: loading, refetch: fetchBatches } = useBatches(
+    Object.fromEntries([
+      statusFilter !== "all" ? ["status", statusFilter] : [],
+      dateRange.from ? ["from", dateRange.from] : [],
+      dateRange.to ? ["to", dateRange.to] : [],
+    ].filter(e => e.length > 0))
+  );
+  const invalidateBatches = useInvalidateBatches();
+
   const filteredLogs = useMemo(() => {
     return salesLogs.filter(log =>
       (log.client_name || "").toLowerCase().includes(logSearch.toLowerCase()) ||
@@ -346,28 +354,6 @@ function BatchesContent() {
       (log.reason || "").toLowerCase().includes(logSearch.toLowerCase())
     );
   }, [salesLogs, logSearch]);
-
-  const fetchBatches = useCallback(async () => {
-    setLoading(true);
-    const params = new URLSearchParams();
-    if (statusFilter !== "all") params.set("status", statusFilter);
-    if (dateRange.from) params.set("from", dateRange.from);
-    if (dateRange.to) params.set("to", dateRange.to);
-    try {
-      const res = await fetch(`/api/batches?${params.toString()}`);
-      if (!res.ok) throw new Error("Connection lost");
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        setBatches(data);
-        try { syncToLocal("incentive_batches", data); } catch (e) { console.warn("Local sync deferred", e); }
-      }
-    } catch (err) {
-      console.error("Fetch batches error:", err);
-      toast.error("Network connection unstable");
-    } finally { setLoading(false); }
-  }, [statusFilter, dateRange]);
-
-  useEffect(() => { fetchBatches(); }, [fetchBatches]);
 
   useEffect(() => {
     if (showCreate) {
@@ -405,18 +391,29 @@ function BatchesContent() {
     setActionLoading(batchId);
     try {
       const isDelete = action === 'delete';
+      const currentBatch = batches.find((b: any) => b.id === batchId);
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (!isDelete && currentBatch?.version !== undefined) {
+        headers["X-Batch-Version"] = String(currentBatch.version);
+      }
       const res = await fetch(`/api/batches/${batchId}`, {
         method: isDelete ? "DELETE" : "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: isDelete ? null : JSON.stringify({ action, rejection_reason, ...extra })
       });
+      if (res.status === 409) {
+        const err = await res.json();
+        toast.error(err.error || "Batch was modified by someone else — please refresh.");
+        invalidateBatches();
+        return;
+      }
       if (res.ok) {
         toast.success(
           isDelete ? "Batch permanently deleted" :
             action === 'pay_selected' ? "Payment execution batch created" :
               "Batch lifecycle successfully updated"
         );
-        fetchBatches();
+        invalidateBatches();
         setSelectedBatch(null);
         setExpandedId(null);
       } else {
@@ -428,6 +425,7 @@ function BatchesContent() {
   };
 
   const handleCreate = async () => {
+    const idempotencyKey = crypto.randomUUID();
     setCreating(true);
     try {
       const items = selectedItemsSummary.items.map(l => ({
@@ -439,7 +437,7 @@ function BatchesContent() {
       }));
       const res = await fetch("/api/batches", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Idempotency-Key": idempotencyKey },
         body: JSON.stringify({ batch_name: batchName, items }),
       });
       if (res.ok) {
@@ -447,7 +445,7 @@ function BatchesContent() {
         setShowCreate(false);
         setBatchName("");
         setSelectedLogs(new Set());
-        fetchBatches();
+        invalidateBatches();
       } else {
         const err = await res.json().catch(() => ({}));
         toast.error(err?.error || "Failed to create batch — please try again");
@@ -982,4 +980,3 @@ function fmt(n: number) {
   if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
   return n.toLocaleString("en-IN");
 }
-
