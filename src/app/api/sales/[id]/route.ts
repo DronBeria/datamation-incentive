@@ -13,12 +13,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     const { id } = await params;
     const body = await req.json();
-    const { action, reason, note } = body; // 'approve', 'reject', 'flag', 'resolve_flag'
+    const { action, reason, note, resolution } = body; // 'approve', 'reject', 'flag', 'resolve_flag', 'dispute', 'resolve_dispute'
 
     // Role checks based on action
-    if (action === "flag" && !["salesperson", "manager", "admin"].includes(session.role)) {
+    if ((action === "flag" || action === "dispute") && !["salesperson", "manager", "admin"].includes(session.role)) {
         return NextResponse.json({ error: "Forbidden: Only authorized roles can flag" }, { status: 403 });
-    } else if (action !== "flag" && !["manager", "admin"].includes(session.role)) {
+    } else if (action !== "flag" && action !== "dispute" && !["manager", "admin"].includes(session.role)) {
         return NextResponse.json({ error: "Forbidden: Management access required" }, { status: 403 });
     }
 
@@ -97,6 +97,58 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             .run(log.salesperson_id, `Manager resolved your flag on sale #${log.id} (${log.client_name}).`);
 
         return NextResponse.json({ message: `Flag resolved successfully` });
+
+    } else if (action === "dispute") {
+        if (log.status !== "earned") {
+            return NextResponse.json({ error: "Disputes can only be raised on earned sales" }, { status: 400 });
+        }
+        if (log.dispute_status === "under_review") {
+            return NextResponse.json({ error: "A dispute is already under review for this sale" }, { status: 400 });
+        }
+        if (session.role === "salesperson" && log.salesperson_id !== session.id) {
+            return NextResponse.json({ error: "Forbidden: You can only dispute your own sales" }, { status: 403 });
+        }
+
+        await db.prepare("UPDATE sales_logs SET dispute_status = 'under_review', dispute_note = ? WHERE id = ?")
+            .run(note || "Dispute raised", id);
+
+        // Notify all managers and admins
+        const managers = await db.prepare("SELECT id FROM users WHERE role IN ('manager', 'admin')").all() as any[];
+        for (const mgr of managers) {
+            await db.prepare("INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Dispute Filed', ?, 'alert')")
+                .run(mgr.id, `A dispute was raised on sale by ${log.salesperson_name}: ${note || "No reason provided"}`);
+        }
+
+        await db.prepare(
+            "INSERT INTO audit_logs (user_id, action, entity_type, entity_id, old_value, new_value) VALUES (?, 'DISPUTE_FILED', 'sales_log', ?, ?, ?)"
+        ).run(session.id, id, JSON.stringify({ dispute_status: log.dispute_status }), JSON.stringify({ dispute_status: "under_review" }));
+
+        return NextResponse.json({ message: "Dispute filed successfully" });
+
+    } else if (action === "resolve_dispute") {
+        if (log.dispute_status !== "under_review") {
+            return NextResponse.json({ error: "No active dispute to resolve" }, { status: 400 });
+        }
+
+        const accepted = resolution === "accept";
+        const newDisputeStatus = "resolved";
+        const resolvedStatus = accepted ? "pending_review" : log.status;
+
+        await db.prepare("UPDATE sales_logs SET dispute_status = ?, status = ?, dispute_note = ? WHERE id = ?")
+            .run(newDisputeStatus, resolvedStatus, (log.dispute_note || "") + ` | Resolved (${resolution}): ${note || ""}`, id);
+
+        const notifMessage = accepted
+            ? `Your dispute on sale for "${log.client_name}" was accepted. The sale has been moved back to pending review.`
+            : `Your dispute on sale for "${log.client_name}" was reviewed and rejected. The original status is maintained.`;
+
+        await db.prepare("INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Dispute Resolved', ?, 'info')")
+            .run(log.salesperson_id, notifMessage);
+
+        await db.prepare(
+            "INSERT INTO audit_logs (user_id, action, entity_type, entity_id, old_value, new_value) VALUES (?, 'DISPUTE_RESOLVED', 'sales_log', ?, ?, ?)"
+        ).run(session.id, id, JSON.stringify({ dispute_status: "under_review", status: log.status }), JSON.stringify({ dispute_status: newDisputeStatus, status: resolvedStatus }));
+
+        return NextResponse.json({ message: `Dispute resolved (${resolution})` });
 
     } else {
         return NextResponse.json({ error: "Invalid action" }, { status: 400 });

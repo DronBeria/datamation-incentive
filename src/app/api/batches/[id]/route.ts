@@ -165,8 +165,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         updated_at: new Date().toISOString()
       }).eq('id', id);
 
-      // Update Statuses
-      const { data: items } = await supabase.from('batch_items').select('sales_log_id, adjustment_id, salesperson_id, amount').eq('batch_id', id);
+      // Update Statuses — fetch with client_name via sales_logs join
+      const { data: items } = await supabase
+        .from('batch_items')
+        .select('sales_log_id, adjustment_id, salesperson_id, amount, sales_logs(client_name)')
+        .eq('batch_id', id);
       if (items) {
         const logIds = items.filter(i => i.sales_log_id).map(i => i.sales_log_id);
         const adjIds = items.filter(i => i.adjustment_id).map(i => i.adjustment_id);
@@ -179,21 +182,28 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           await supabase.from('adjustments').update({ status: 'applied', applied_at: new Date().toISOString() }).in('id', adjIds);
         }
 
+        const paidDate = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
         const salespersons = Array.from(new Set(items.map(i => i.salesperson_id)));
         for (const spId of salespersons) {
-          const total = items.filter(i => i.salesperson_id === spId).reduce((s, i) => s + (i.amount || 0), 0);
+          const spItems = items.filter(i => i.salesperson_id === spId);
+          const total = spItems.reduce((s, i) => s + (i.amount || 0), 0);
+          const itemCount = spItems.length;
+          const lineItems = spItems.map(i => ({
+            client_name: (i.sales_logs as any)?.client_name || 'Transaction',
+            amount: i.amount || 0,
+          }));
 
           await supabase.from('notifications').insert({
             user_id: spId,
             title: 'Payout Disbursed!',
-            message: 'The finance team has processed your payment.',
+            message: `Your commission of ₹${total.toLocaleString()} has been disbursed. Batch: ${batch.batch_name} (${batch.reference_number}). Items: ${itemCount} transactions.`,
             type: 'success'
           });
 
           const { data: user } = await supabase.from('users').select('email, full_name').eq('id', spId).single();
           if (user?.email) {
             try {
-              await sendBatchPaidEmail(user.email, user.full_name, batch.batch_name, total, batch.reference_number);
+              await sendBatchPaidEmail(user.email, user.full_name, batch.batch_name, total, batch.reference_number, paidDate, lineItems);
             } catch (e: any) {
               console.error(`[BATCH_NOTIFY] Failed to send payment email to ${user.email}:`, e.message);
             }
@@ -205,10 +215,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       if (!["accounts", "admin"].includes(userRole)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       if (!selectedItemIds || !selectedItemIds.length) return NextResponse.json({ error: "No items selected" }, { status: 400 });
 
-      // 1. Fetch selected items details
+      // 1. Fetch selected items details (with client_name from sales_logs)
       const { data: items, error: iErr } = await supabase
         .from('batch_items')
-        .select('*')
+        .select('*, sales_logs(client_name)')
         .in('id', selectedItemIds)
         .eq('batch_id', id);
 
@@ -264,21 +274,28 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }).eq('id', id);
 
       // 6. Notifications and Emails
+      const paidDatePartial = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
       const salespersons = Array.from(new Set(items.map(i => i.salesperson_id)));
       for (const spId of salespersons) {
-        const total = items.filter(i => i.salesperson_id === spId).reduce((s, i) => s + (i.amount || 0), 0);
+        const spItems = items.filter(i => i.salesperson_id === spId);
+        const total = spItems.reduce((s, i) => s + (i.amount || 0), 0);
+        const itemCount = spItems.length;
+        const lineItems = spItems.map(i => ({
+          client_name: (i.sales_logs as any)?.client_name || 'Transaction',
+          amount: i.amount || 0,
+        }));
 
         await supabase.from('notifications').insert({
           user_id: spId,
           title: 'Payout Disbursed!',
-          message: `Your payment of ₹${total.toLocaleString()} from ${batch.batch_name} has been processed.`,
+          message: `Your commission of ₹${total.toLocaleString()} has been disbursed. Batch: ${batch.batch_name} (${batch.reference_number}). Items: ${itemCount} transactions.`,
           type: 'success'
         });
 
         const { data: user } = await supabase.from('users').select('email, full_name').eq('id', spId).single();
         if (user?.email) {
           try {
-            await sendBatchPaidEmail(user.email, user.full_name, newBatchName, total);
+            await sendBatchPaidEmail(user.email, user.full_name, newBatchName, total, undefined, paidDatePartial, lineItems);
           } catch (e: any) {
             console.error(`[BATCH_NOTIFY] Failed to send partial payment email to ${user.email}:`, e.message);
           }

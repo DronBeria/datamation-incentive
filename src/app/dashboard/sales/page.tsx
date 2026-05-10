@@ -24,7 +24,7 @@ import { downloadCSV, exportToExcel, exportToPDF } from "@/lib/export-utils";
 import {
   Plus, Loader2, Search, CheckCircle2, XCircle, MoreHorizontal,
   ShoppingCart, TrendingUp, Clock, Banknote, Download, Info,
-  Eye, ArrowRight, User, Package, Sparkles, Target, Flag, CheckSquare, AlertTriangle, Trash2,
+  Eye, ArrowRight, User, Package, Sparkles, Target, Flag, CheckSquare, AlertTriangle, Trash2, Upload, FileSpreadsheet,
 } from "lucide-react";
 import { DateRangePicker } from "@/components/date-range-picker";
 
@@ -66,6 +66,18 @@ export default function SalesPage() {
     is_custom: false, custom_commission: "", scheme_id: "",
   });
 
+  // CSV import state
+  const [showImport, setShowImport] = useState(false);
+  const [importRows, setImportRows] = useState<any[]>([]);
+  const [importProgress, setImportProgress] = useState(0);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importSummary, setImportSummary] = useState<{ ok: number; fail: number } | null>(null);
+
+  // Dispute dialog state
+  const [disputeLog, setDisputeLog] = useState<any>(null);
+  const [disputeNote, setDisputeNote] = useState("");
+  const [disputeSubmitting, setDisputeSubmitting] = useState(false);
+
   const queryParams = Object.fromEntries([
     dateRange.from ? ["from", dateRange.from] : [],
     dateRange.to ? ["to", dateRange.to] : [],
@@ -73,6 +85,25 @@ export default function SalesPage() {
 
   const { data: logs = [], isLoading: loading } = useSales(queryParams);
   const invalidateSales = useInvalidateSales();
+
+  // Live commission preview
+  const commissionPreview = useMemo(() => {
+    if (form.is_custom) return parseFloat(form.custom_commission) || 0;
+    const val = parseFloat(form.deal_value) || 0;
+    const qty = parseFloat(form.quantity) || 1;
+    if (!val && !qty) return 0;
+    const schemeId = form.scheme_id && form.scheme_id !== "none" ? parseInt(form.scheme_id) : null;
+    const scheme = schemeId
+      ? schemes.find(s => s.id === schemeId)
+      : (user?.role === "salesperson" ? schemes[0] : null);
+    if (!scheme) return 0;
+    const { calculation_type, base_rate, target_threshold, bonus_rate } = scheme;
+    if (calculation_type === "percentage") return val * base_rate;
+    if (calculation_type === "tier_based") return val >= target_threshold ? val * bonus_rate : val * base_rate;
+    if (calculation_type === "fixed_per_qty") return base_rate * qty;
+    if (calculation_type === "quantity_threshold") return qty >= target_threshold ? bonus_rate * qty : base_rate * qty;
+    return 0;
+  }, [form.deal_value, form.quantity, form.scheme_id, form.is_custom, form.custom_commission, schemes, user]);
 
   useEffect(() => {
     fetch("/api/users?role=salesperson")
@@ -149,6 +180,74 @@ export default function SalesPage() {
       else { const d = await res.json(); toast.error(d.error || "Action failed"); }
     } catch { toast.error("Dispute update failed"); }
     finally { setReviewing(null); }
+  };
+
+  const handleSalespersonDispute = async () => {
+    if (!disputeLog || !disputeNote.trim()) { toast.error("Please provide a reason"); return; }
+    setDisputeSubmitting(true);
+    try {
+      const res = await fetch(`/api/sales/${disputeLog.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "dispute", note: disputeNote.trim() }),
+      });
+      if (res.ok) {
+        toast.success("Dispute filed — managers have been notified");
+        setDisputeLog(null); setDisputeNote("");
+        invalidateSales();
+      } else { const d = await res.json(); toast.error(d.error || "Failed to file dispute"); }
+    } catch { toast.error("Network error"); }
+    finally { setDisputeSubmitting(false); }
+  };
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const text = evt.target?.result as string;
+      const lines = text.split(/\r?\n/).filter(Boolean);
+      if (lines.length < 2) { toast.error("CSV must have a header row and at least one data row"); return; }
+      const headers = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/\s+/g, "_").replace(/[^a-z_]/g, ""));
+      const rows = lines.slice(1).map((line, idx) => {
+        const vals = line.split(",").map(v => v.trim().replace(/^"|"$/g, ""));
+        const row: any = { _rowNum: idx + 2 };
+        headers.forEach((h, i) => { row[h] = vals[i] || ""; });
+        const errors: string[] = [];
+        if (!row.client_name) errors.push("client_name required");
+        if (!row.deal_value || isNaN(parseFloat(row.deal_value))) errors.push("deal_value must be a number");
+        if (!row.sale_date || !/^\d{4}-\d{2}-\d{2}$/.test(row.sale_date)) errors.push("sale_date must be YYYY-MM-DD");
+        row._errors = errors;
+        row._valid = errors.length === 0;
+        return row;
+      });
+      setImportRows(rows);
+      setImportSummary(null);
+      setImportProgress(0);
+    };
+    reader.readAsText(file);
+  };
+
+  const handleImportSubmit = async () => {
+    const valid = importRows.filter(r => r._valid);
+    if (!valid.length) { toast.error("No valid rows to import"); return; }
+    setImportLoading(true);
+    setImportProgress(0);
+    let ok = 0; let fail = 0;
+    for (let i = 0; i < valid.length; i++) {
+      const row = valid[i];
+      try {
+        const res = await fetch("/api/sales", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ client_name: row.client_name, deal_value: parseFloat(row.deal_value), sale_date: row.sale_date, product: row.product || "", quantity: parseFloat(row.quantity) || 1, notes: row.notes || "" }),
+        });
+        if (res.ok) ok++; else fail++;
+      } catch { fail++; }
+      setImportProgress(Math.round(((i + 1) / valid.length) * 100));
+    }
+    setImportSummary({ ok, fail });
+    setImportLoading(false);
+    if (ok > 0) invalidateSales();
   };
 
   const handleDeleteSale = async (logId: string, clientName: string) => {
@@ -243,6 +342,12 @@ export default function SalesPage() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          {isManager && (
+            <Button onClick={() => { setShowImport(true); setImportRows([]); setImportSummary(null); setImportProgress(0); }}
+              variant="outline" className="h-10 rounded-xl border-slate-200 bg-white text-xs font-semibold shadow-sm hover:bg-slate-50 flex items-center gap-2">
+              <Upload className="h-3.5 w-3.5" /> Import CSV
+            </Button>
+          )}
           <Button onClick={() => setShowCreate(true)} className="bg-blue-600 hover:bg-blue-500 text-white font-semibold h-10 px-5 rounded-xl shadow-sm text-xs transition-all active:scale-95 flex items-center gap-2">
             <Plus className="h-4 w-4" /> Log Sale
           </Button>
@@ -394,7 +499,14 @@ export default function SalesPage() {
                               <DropdownMenuItem onClick={() => setDetailLog(log)} className="rounded-lg text-xs font-semibold py-2 cursor-pointer">
                                 <Info className="h-3.5 w-3.5 mr-2 text-slate-400" /> View Details
                               </DropdownMenuItem>
-                              {log.status !== "paid" && (!log.dispute_status || log.dispute_status === 'none' || log.dispute_status === 'resolved') && (
+                              {/* Salesperson self-dispute */}
+                              {user?.role === "salesperson" && log.status === "earned" && (!log.dispute_status || log.dispute_status === "none" || log.dispute_status === "resolved") && (
+                                <DropdownMenuItem onClick={() => setDisputeLog(log)} className="rounded-lg text-xs font-semibold py-2 cursor-pointer text-amber-600 focus:text-amber-700 bg-amber-50 mt-1">
+                                  <AlertTriangle className="h-3.5 w-3.5 mr-2" /> Raise Dispute
+                                </DropdownMenuItem>
+                              )}
+                              {/* Manager flag */}
+                              {isManager && log.status !== "paid" && (!log.dispute_status || log.dispute_status === 'none' || log.dispute_status === 'resolved') && (
                                 <DropdownMenuItem onClick={() => handleDispute(log.id, "flag")} className="rounded-lg text-xs font-semibold py-2 cursor-pointer text-amber-600 focus:text-amber-700 bg-amber-50 mt-1">
                                   <Flag className="h-3.5 w-3.5 mr-2" /> Flag for Review
                                 </DropdownMenuItem>
@@ -574,6 +686,17 @@ export default function SalesPage() {
                   </div>
                 </div>
 
+                {/* Commission Preview */}
+                {commissionPreview > 0 && (
+                  <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-blue-600" />
+                      <span className="text-sm font-semibold text-blue-800">Estimated Commission</span>
+                    </div>
+                    <span className="text-lg font-bold text-blue-700">₹{commissionPreview.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span>
+                  </div>
+                )}
+
                 {/* Row 3: Product + Sale Date */}
                 <div className="grid grid-cols-2 gap-5">
                   <div className="space-y-2">
@@ -696,6 +819,111 @@ export default function SalesPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* ── Salesperson Dispute Dialog ── */}
+      <Dialog open={!!disputeLog} onOpenChange={() => { setDisputeLog(null); setDisputeNote(""); }}>
+        <DialogContent className="max-w-md p-0 overflow-hidden border border-slate-200 shadow-2xl rounded-2xl bg-white">
+          <div className="flex flex-col">
+            <div className="flex items-center gap-4 px-6 py-5 border-b border-slate-100">
+              <div className="h-10 w-10 rounded-xl bg-amber-500 flex items-center justify-center"><AlertTriangle className="h-5 w-5 text-white" /></div>
+              <div><DialogTitle className="text-base font-semibold text-slate-900">File a Dispute</DialogTitle>
+                <p className="text-[11px] text-slate-400 mt-0.5">Managers will review your claim and respond</p></div>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                <p className="text-xs font-semibold text-slate-700">{disputeLog?.client_name}</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">₹{(disputeLog?.deal_value || 0).toLocaleString("en-IN")} · {disputeLog?.sale_date}</p>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">Reason for Dispute <span className="text-red-500">*</span></label>
+                <Input value={disputeNote} onChange={e => setDisputeNote(e.target.value)} placeholder="Describe the issue clearly..."
+                  className="h-11 border-slate-200 bg-white rounded-lg text-sm" />
+              </div>
+            </div>
+            <div className="flex items-center gap-3 px-6 py-4 border-t border-slate-100">
+              <Button variant="outline" onClick={() => { setDisputeLog(null); setDisputeNote(""); }} className="flex-1 h-10 rounded-xl text-sm font-medium border-slate-200">Cancel</Button>
+              <Button onClick={handleSalespersonDispute} disabled={disputeSubmitting || !disputeNote.trim()}
+                className="flex-1 h-10 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-semibold text-sm disabled:opacity-50">
+                {disputeSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit Dispute"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── CSV Import Dialog ── */}
+      <Dialog open={showImport} onOpenChange={setShowImport}>
+        <DialogContent className="max-w-2xl p-0 overflow-hidden border border-slate-200 shadow-2xl rounded-2xl bg-white">
+          <div className="flex flex-col max-h-[85vh]">
+            <div className="flex items-center gap-4 px-6 py-5 border-b border-slate-100 shrink-0">
+              <div className="h-10 w-10 rounded-xl bg-emerald-600 flex items-center justify-center"><FileSpreadsheet className="h-5 w-5 text-white" /></div>
+              <div><DialogTitle className="text-base font-semibold text-slate-900">Import Sales from CSV</DialogTitle>
+                <p className="text-[11px] text-slate-400 mt-0.5">Required columns: client_name, deal_value, sale_date — Optional: product, quantity, notes</p></div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+              {!importRows.length ? (
+                <label className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-slate-200 rounded-2xl cursor-pointer hover:border-blue-300 hover:bg-blue-50/30 transition-all">
+                  <input type="file" accept=".csv" className="sr-only" onChange={handleImportFile} />
+                  <Upload className="h-8 w-8 text-slate-300 mb-2" />
+                  <p className="text-sm font-semibold text-slate-600">Click to upload or drag & drop a CSV file</p>
+                  <p className="text-xs text-slate-400 mt-1">Format: client_name,deal_value,sale_date,product,quantity</p>
+                </label>
+              ) : importSummary ? (
+                <div className="flex flex-col items-center justify-center py-8 gap-4">
+                  <CheckCircle2 className="h-12 w-12 text-emerald-500" />
+                  <div className="text-center">
+                    <p className="text-xl font-heading text-slate-900">{importSummary.ok} imported successfully</p>
+                    {importSummary.fail > 0 && <p className="text-sm text-red-600 mt-1">{importSummary.fail} failed</p>}
+                  </div>
+                  <Button onClick={() => { setShowImport(false); setImportRows([]); setImportSummary(null); }} className="h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold text-sm px-6">Done</Button>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-slate-700">{importRows.length} rows parsed · {importRows.filter(r => r._valid).length} valid · {importRows.filter(r => !r._valid).length} invalid</p>
+                    <label className="text-xs text-blue-600 font-semibold cursor-pointer hover:underline">
+                      <input type="file" accept=".csv" className="sr-only" onChange={handleImportFile} />Change file
+                    </label>
+                  </div>
+                  <div className="overflow-x-auto rounded-xl border border-slate-100">
+                    <Table>
+                      <TableHeader><TableRow className="bg-slate-50/50">{["Row", "Client", "Deal Value", "Sale Date", "Status"].map(h => <TableHead key={h} className="py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">{h}</TableHead>)}</TableRow></TableHeader>
+                      <TableBody>
+                        {importRows.slice(0, 20).map((r, i) => (
+                          <TableRow key={i} className={`border-b border-slate-50 ${!r._valid ? "bg-red-50/30" : ""}`}>
+                            <TableCell className="text-xs text-slate-400">{r._rowNum}</TableCell>
+                            <TableCell className="text-xs font-medium text-slate-800">{r.client_name || <span className="text-red-500">missing</span>}</TableCell>
+                            <TableCell className="text-xs text-slate-700">{r.deal_value}</TableCell>
+                            <TableCell className="text-xs text-slate-700">{r.sale_date}</TableCell>
+                            <TableCell>{r._valid ? <span className="text-[10px] text-emerald-600 font-bold">Valid</span> : <span className="text-[10px] text-red-600 font-bold">{r._errors[0]}</span>}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    {importRows.length > 20 && <p className="text-center text-xs text-slate-400 py-2">+{importRows.length - 20} more rows</p>}
+                  </div>
+                  {importLoading && (
+                    <div className="space-y-1.5">
+                      <div className="h-2 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${importProgress}%` }} /></div>
+                      <p className="text-xs text-slate-500 text-center">{importProgress}% complete…</p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+            {!importSummary && importRows.length > 0 && (
+              <div className="flex items-center gap-3 px-6 py-4 border-t border-slate-100 shrink-0">
+                <Button variant="outline" onClick={() => setShowImport(false)} className="flex-1 h-10 rounded-xl text-sm font-medium border-slate-200">Cancel</Button>
+                <Button onClick={handleImportSubmit} disabled={importLoading || !importRows.filter(r => r._valid).length}
+                  className="flex-1 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold text-sm disabled:opacity-50">
+                  {importLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : `Import ${importRows.filter(r => r._valid).length} Sales`}
+                </Button>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
