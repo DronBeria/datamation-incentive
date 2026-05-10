@@ -126,7 +126,7 @@ export default function SalesPage() {
         }),
       });
       if (res.ok) {
-        toast.success("Deal successfully archived");
+        toast.success("Sale logged successfully");
         setShowCreate(false);
         setForm({ salesperson_id: "", client_name: "", deal_value: "", product: "", sale_date: "", notes: "", quantity: "1", is_custom: false, custom_commission: "", scheme_id: "" });
         fetchLogs();
@@ -148,7 +148,13 @@ export default function SalesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action }),
       });
-      if (res.ok) { toast.success(`Transaction successfully ${action}d`); fetchLogs(); }
+      if (res.ok) {
+        toast.success(`Transaction successfully ${action === "approve" ? "approved" : "rejected"}`);
+        fetchLogs();
+      } else {
+        const d = await res.json();
+        toast.error(d.error || "Review action failed");
+      }
     } catch { toast.error("Review failed"); }
     finally { setReviewing(null); }
   };

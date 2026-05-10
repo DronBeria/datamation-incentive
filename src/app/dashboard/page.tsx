@@ -87,20 +87,23 @@ function KpiCard({ icon: Icon, label, value, sub, trend, colorClass, bgClass }: 
   );
 }
 
-const MOCK_PERFORMANCE = [
-  { name: 'Sep', value: 420000 },
-  { name: 'Oct', value: 380000 },
-  { name: 'Nov', value: 510000 },
-  { name: 'Dec', value: 490000 },
-  { name: 'Jan', value: 650000 },
-  { name: 'Feb', value: 590000 },
-  { name: 'Mar', value: 720000 },
+const FALLBACK_PERFORMANCE = [
+  { name: 'Sep', value: 0 },
+  { name: 'Oct', value: 0 },
+  { name: 'Nov', value: 0 },
+  { name: 'Dec', value: 0 },
+  { name: 'Jan', value: 0 },
+  { name: 'Feb', value: 0 },
+  { name: 'Mar', value: 0 },
 ];
+
+const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [performanceData, setPerformanceData] = useState<any[]>(FALLBACK_PERFORMANCE);
 
   useEffect(() => {
     fetch("/api/dashboard")
@@ -108,6 +111,19 @@ export default function DashboardPage() {
       .then((d) => { setStats(d); syncToLocal("dashboard_stats", d); })
       .catch(console.error)
       .finally(() => setLoading(false));
+
+    fetch("/api/reports")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.monthlyRevenue && Array.isArray(d.monthlyRevenue) && d.monthlyRevenue.length > 0) {
+          const chartData = d.monthlyRevenue.slice(-7).map((item: any) => ({
+            name: MONTH_ABBR[parseInt(item.month.substring(5, 7), 10) - 1] || item.month,
+            value: item.revenue || 0,
+          }));
+          setPerformanceData(chartData);
+        }
+      })
+      .catch(console.error);
   }, []);
 
   if (loading) return (
@@ -174,9 +190,11 @@ export default function DashboardPage() {
             </div>
 
             <div className="flex items-center gap-3 pt-2">
-              <Button className="bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl h-10 px-5 shadow-sm transition-all active:scale-95 group text-xs">
-                View Reports <ArrowRight className="ml-2 h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
-              </Button>
+              <Link href="/dashboard/reports">
+                <Button className="bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl h-10 px-5 shadow-sm transition-all active:scale-95 group text-xs">
+                  View Reports <ArrowRight className="ml-2 h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+                </Button>
+              </Link>
             </div>
           </div>
 
@@ -217,7 +235,7 @@ export default function DashboardPage() {
               <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-widest mt-1">Monthly performance</p>
             </div>
           </div>
-          <PerformanceChart data={MOCK_PERFORMANCE} />
+          <PerformanceChart data={performanceData} />
         </Card>
 
         <Card className="p-0 border border-slate-100 shadow-sm bg-white rounded-2xl overflow-hidden">

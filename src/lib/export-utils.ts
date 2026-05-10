@@ -123,7 +123,7 @@ export function downloadPDF(title: string, tables: { heading: string; columns: {
 
   let html = `<!DOCTYPE html><html><head><title>${title}</title>${styles}</head><body>`;
   html += `<h1>${title}</h1>`;
-  html += `<div class="meta">Generated on ${new Date().toLocaleString()} | PayoutPower Incentive Management System</div>`;
+  html += `<div class="meta">Generated on ${new Date().toLocaleString()} | IncentivePro Incentive Management System</div>`;
 
   for (const tbl of tables) {
     if (!tbl.data.length) continue;

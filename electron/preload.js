@@ -1,7 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 /**
- * PayoutPower Secure Bridge
+ * IncentivePro Secure Bridge
  * Exposes controlled native capabilities to the Vercel-hosted web app
  */
 contextBridge.exposeInMainWorld('electron', {

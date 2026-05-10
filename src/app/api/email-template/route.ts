@@ -27,7 +27,7 @@ export async function GET() {
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td>
-                    <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:700;">PayoutPower</h1>
+                    <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:700;">IncentivePro</h1>
                     <p style="margin:4px 0 0;color:#94a3b8;font-size:12px;">Incentive Management System</p>
                   </td>
                   <td align="right">
@@ -113,7 +113,7 @@ export async function GET() {
           <tr>
             <td style="background-color:#f8fafc;padding:20px 32px;border-top:1px solid #e2e8f0;">
               <p style="margin:0;color:#94a3b8;font-size:11px;text-align:center;">
-                This is an automated notification from PayoutPower IMS.<br>
+                This is an automated notification from IncentivePro IMS.<br>
                 Please do not reply to this email. For queries, contact your manager or HR.
               </p>
             </td>

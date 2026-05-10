@@ -11,7 +11,7 @@ const supabase = createClient(
 async function seedAdmin() {
   console.log('🌱 Seeding Admin User...');
 
-  const hash = bcrypt.hashSync('Datamation@2026', 10);
+  const hash = bcrypt.hashSync('IncentivePro@2026', 10);
 
   const sql = `
     -- Ensure roles exist
@@ -21,9 +21,9 @@ async function seedAdmin() {
     ON CONFLICT (name) DO NOTHING;
 
     -- Create/Update Admin
-    DELETE FROM users WHERE email = 'admin@datamation.com';
+    DELETE FROM users WHERE email = 'admin@IncentivePro.com';
     INSERT INTO users (email, password_hash, full_name, role_id) 
-    SELECT 'admin@datamation.com', '${hash}', 'System Administrator', id 
+    SELECT 'admin@IncentivePro.com', '${hash}', 'System Administrator', id 
     FROM roles WHERE name = 'admin';
   `;
 
@@ -33,8 +33,8 @@ async function seedAdmin() {
     console.error('❌ Seeding Failed:', error.message);
   } else {
     console.log('✅ Admin user created successfully!');
-    console.log('📧 Login: admin@datamation.com');
-    console.log('🔑 Password: Datamation@2026');
+    console.log('📧 Login: admin@IncentivePro.com');
+    console.log('🔑 Password: IncentivePro@2026');
   }
 }
 

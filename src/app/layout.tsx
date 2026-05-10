@@ -12,8 +12,8 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "PayoutPower — Incentive Management",
-  description: "PayoutPower IMS — Incentive Management Dashboard for sales teams",
+  title: "IncentivePro — Incentive Management",
+  description: "IncentivePro IMS — Incentive Management Dashboard for sales teams",
 };
 
 import { LoadingProvider } from "@/components/ui/global-loader";

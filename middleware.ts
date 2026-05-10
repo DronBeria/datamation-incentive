@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
 const JWT_SECRET = new TextEncoder().encode(
-    process.env.JWT_SECRET || "payoutpower-dev-secret-change-in-production-2026"
+    process.env.JWT_SECRET || "IncentivePro-dev-secret-change-in-production-2026"
 );
 
 // ─── Security headers applied to every response ───
@@ -139,8 +139,8 @@ export async function middleware(request: NextRequest) {
         if (token && (pathname === "/" || pathname === "/login")) {
             try {
                 await jwtVerify(token, JWT_SECRET, {
-                    issuer: "payoutpower-ims",
-                    audience: "payoutpower-client",
+                    issuer: "IncentivePro-ims",
+                    audience: "IncentivePro-client",
                 });
                 return applySecurityHeaders(
                     NextResponse.redirect(new URL("/dashboard", request.url)),
@@ -184,8 +184,8 @@ export async function middleware(request: NextRequest) {
 
         try {
             const { payload } = await jwtVerify(token, JWT_SECRET, {
-                issuer: "payoutpower-ims",
-                audience: "payoutpower-client",
+                issuer: "IncentivePro-ims",
+                audience: "IncentivePro-client",
             });
             const role = (payload as any).role as string;
 
@@ -250,8 +250,8 @@ export async function middleware(request: NextRequest) {
             }
             try {
                 const { payload } = await jwtVerify(token, JWT_SECRET, {
-                    issuer: "payoutpower-ims",
-                    audience: "payoutpower-client",
+                    issuer: "IncentivePro-ims",
+                    audience: "IncentivePro-client",
                 });
                 if ((payload as any).role !== "admin") {
                     return applySecurityHeaders(
@@ -275,8 +275,8 @@ export async function middleware(request: NextRequest) {
         }
         try {
             await jwtVerify(token, JWT_SECRET, {
-                issuer: "payoutpower-ims",
-                audience: "payoutpower-client",
+                issuer: "IncentivePro-ims",
+                audience: "IncentivePro-client",
             });
         } catch {
             const res = NextResponse.json({ error: "Session expired" }, { status: 401 });

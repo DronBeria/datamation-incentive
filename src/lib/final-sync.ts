@@ -11,7 +11,7 @@ const supabase = createClient(
 async function fullSync() {
   console.log('🔄 Starting Industrial Cloud Sync (No ID insert)...');
 
-  const hash = bcrypt.hashSync('Datamation@2026', 10);
+  const hash = bcrypt.hashSync('IncentivePro@2026', 10);
 
   try {
     // 1. Ensure Roles (using RPC to avoid identity column issues)
@@ -31,7 +31,7 @@ async function fullSync() {
 
     // 4. Reset Users
     const users = [
-      { email: 'admin@datamation.com', password_hash: hash, full_name: 'System Administrator', role_id: roleMap['admin'], department: 'Executive', is_active: true },
+      { email: 'admin@IncentivePro.com', password_hash: hash, full_name: 'System Administrator', role_id: roleMap['admin'], department: 'Executive', is_active: true },
       { email: 'manager@company.com', password_hash: hash, full_name: 'Priya Sharma (Manager)', role_id: roleMap['manager'], department: 'Sales Management', is_active: true },
       { email: 'accounts@company.com', password_hash: hash, full_name: 'Amit Patel (Accounts)', role_id: roleMap['accounts'], department: 'Finance', is_active: true },
       { email: 'sales1@company.com', password_hash: hash, full_name: 'Vikram Singh (Sales)', role_id: roleMap['salesperson'], department: 'Global Sales', is_active: true }
@@ -44,7 +44,7 @@ async function fullSync() {
     }
 
     console.log('✨ Cloud DB is now perfectly synchronized.');
-    console.log('🔑 Credentials: admin@datamation.com / Datamation@2026');
+    console.log('🔑 Credentials: admin@IncentivePro.com / IncentivePro@2026');
 
   } catch (err: any) {
     console.error('❌ Sync Failed:', err.message);

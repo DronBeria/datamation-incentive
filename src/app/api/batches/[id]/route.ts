@@ -163,7 +163,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         }
 
         if (adjIds.length > 0) {
-          await supabase.from('adjustments').update({ status: 'paid', updated_at: new Date().toISOString() }).in('id', adjIds);
+          await supabase.from('adjustments').update({ status: 'applied', applied_at: new Date().toISOString() }).in('id', adjIds);
         }
 
         const salespersons = Array.from(new Set(items.map(i => i.salesperson_id)));
@@ -237,7 +237,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
 
       if (adjIds.length > 0) {
-        await supabase.from('adjustments').update({ status: 'paid', updated_at: new Date().toISOString() }).in('id', adjIds);
+        await supabase.from('adjustments').update({ status: 'applied', applied_at: new Date().toISOString() }).in('id', adjIds);
       }
 
       // 5. Update parent batch amount

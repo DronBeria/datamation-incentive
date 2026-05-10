@@ -1,8 +1,8 @@
-# PayoutPower (IncenSys) — Full Project Documentation
+# IncentivePro (IncenSys) — Full Project Documentation
 
 > **Internal Product Name:** IncenSys  
 > **Package Name:** `payout-power`  
-> **Developed by:** Datamation Group  
+> **Developed by:** IncentivePro Group  
 > **Version:** 0.1.0  
 > **Last Updated:** March 2026
 
@@ -10,7 +10,7 @@
 
 ## 1. Project Overview
 
-**PayoutPower** (branded as **IncenSys** in the UI) is a full-stack, enterprise-grade **Incentive Management System (IMS)** built for sales-driven organizations. It provides end-to-end management of:
+**IncentivePro** (branded as **IncenSys** in the UI) is a full-stack, enterprise-grade **Incentive Management System (IMS)** built for sales-driven organizations. It provides end-to-end management of:
 
 - Sales logging and deal tracking
 - Commission scheme / incentive rule definition
@@ -21,7 +21,7 @@
 - Audit logging
 - CSV / Excel / PDF reporting and exports
 
-The application targets companies like **Datamation Group** that have sales teams, team managers, accounts departments, and administrators who collectively need a structured, auditable incentive payout pipeline.
+The application targets companies like **IncentivePro Group** that have sales teams, team managers, accounts departments, and administrators who collectively need a structured, auditable incentive payout pipeline.
 
 ---
 
@@ -58,7 +58,7 @@ The app runs in two modes:
 | Mode | Description |
 |---|---|
 | **Web (Vercel)** | Full serverless Next.js app. Database via Supabase RPC. No local SQLite. |
-| **Desktop (Electron)** | Electron shell wrapping the Vercel production URL. Adds local SQLite sync and offline backup to `Documents/PayoutPower/Backups`. The `better-sqlite3` sync is **automatically disabled** in Vercel environment. |
+| **Desktop (Electron)** | Electron shell wrapping the Vercel production URL. Adds local SQLite sync and offline backup to `Documents/IncentivePro/Backups`. The `better-sqlite3` sync is **automatically disabled** in Vercel environment. |
 
 ### 3.2 Directory Structure
 
@@ -215,7 +215,7 @@ Parameters are interpolated safely using a custom `escapeSqlParam()` function (h
 
 **Library:** Nodemailer (SMTP/Gmail)  
 **Fallback:** Resend API  
-**Sender:** `datamationincentive@gmail.com` (configurable via env)
+**Sender:** `IncentiveProincentive@gmail.com` (configurable via env)
 
 ### Email Templates
 
@@ -311,11 +311,11 @@ All routes live under `/api/`:
 
 ## 12. Desktop App (Electron)
 
-- **App ID:** `com.datamation.payoutpower`
-- **Product Name:** PayoutPower
-- **Publisher:** Datamation
+- **App ID:** `com.IncentivePro.IncentivePro`
+- **Product Name:** IncentivePro
+- **Publisher:** IncentivePro
 - **Build Output:** `/dist/` (portable `.exe` for Windows)
-- **Data Backup:** `Documents/PayoutPower/Backups` (local SQLite)
+- **Data Backup:** `Documents/IncentivePro/Backups` (local SQLite)
 - **Sync:** The Electron app wraps the production Vercel URL and syncs with cloud via API
 - **Build Command:** `npm run dist`
 

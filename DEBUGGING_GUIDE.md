@@ -1,7 +1,7 @@
-# PayoutPower IMS — Complete Software Debugging Guide
+# IncentivePro IMS — Complete Software Debugging Guide
 ## End-to-End Feature Inventory & Verification Checklist
 
-> **Purpose:** This document serves as the single source of truth for every feature and functionality in the PayoutPower Incentive Management System. Use it to systematically verify that every flow works correctly, identify any hallucinations or loose ends, and make the software industrial-ready before client delivery.
+> **Purpose:** This document serves as the single source of truth for every feature and functionality in the IncentivePro Incentive Management System. Use it to systematically verify that every flow works correctly, identify any hallucinations or loose ends, and make the software industrial-ready before client delivery.
 
 ---
 
@@ -687,7 +687,7 @@ confidence = dayOfMonth > 20 ? "High" : "Medium"
 
 ### SMTP Configuration:
 - Host: `smtp.gmail.com` (port 465, SSL)
-- From: `datamationincentive@gmail.com`
+- From: `IncentiveProincentive@gmail.com`
 - App Password: Configured in `.env`
 
 **🔍 VERIFY:**
@@ -697,7 +697,7 @@ confidence = dayOfMonth > 20 ? "High" : "Medium"
 - [ ] Payment notification email reaches salespersons
 - [ ] Accounts gets notified of approved batches
 - [ ] Password reset email contains valid link
-- [ ] All emails have correct branding (PayoutPower)
+- [ ] All emails have correct branding (IncentivePro)
 - [ ] Email fails gracefully (doesn't crash the action)
 
 ---
@@ -906,4 +906,4 @@ confidence = dayOfMonth > 20 ? "High" : "Medium"
 
 > **Document Version:** 1.0
 > **Last Updated:** 2026-03-06
-> **Generated for:** Datamation Group — PayoutPower IMS
+> **Generated for:** IncentivePro Group — IncentivePro IMS
