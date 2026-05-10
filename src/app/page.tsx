@@ -45,6 +45,7 @@ export default function LoginPage() {
   const [roleId, setRoleId] = useState("4");
   const [department, setDepartment] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [resetToken, setResetToken] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -466,7 +467,7 @@ export default function LoginPage() {
                 </div>
                 <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest mb-2">New Password</p>
                 <h2 className="text-2xl font-black text-slate-900 tracking-tight">Set new password.</h2>
-                <p className="text-slate-500 text-sm mt-1.5 font-medium">Choose a strong password (min. 8 characters).</p>
+                <p className="text-slate-500 text-sm mt-1.5 font-medium">Min. 8 characters with uppercase, lowercase, and a number.</p>
               </div>
 
               <form onSubmit={handleReset} className="space-y-5">
@@ -486,7 +487,7 @@ export default function LoginPage() {
                       type={showNewPassword ? "text" : "password"}
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="Min. 8 characters"
+                      placeholder="e.g. Secure@123"
                       required
                       className="h-12 border-slate-200 bg-white rounded-xl px-4 pr-11 font-medium placeholder:text-slate-300 focus-visible:ring-emerald-500 shadow-sm"
                     />
@@ -580,14 +581,23 @@ export default function LoginPage() {
 
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Password</label>
-                  <Input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Set a secure password"
-                    required
-                    className="h-11 border-slate-200 bg-white rounded-xl px-4 font-medium"
-                  />
+                  <div className="relative">
+                    <Input
+                      type={showSignupPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Set a secure password"
+                      required
+                      className="h-11 border-slate-200 bg-white rounded-xl px-4 pr-11 font-medium"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSignupPassword(!showSignupPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors"
+                    >
+                      {showSignupPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
 
                 <Button

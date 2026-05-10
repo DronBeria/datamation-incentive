@@ -72,6 +72,7 @@ export function DateRangePicker({ value, onChange, className }: DateRangePickerP
               {[
                 { label: "This Month", fn: () => { const n = new Date(); return { from: format(new Date(n.getFullYear(), n.getMonth(), 1), "yyyy-MM-dd"), to: format(n, "yyyy-MM-dd") }; } },
                 { label: "Last Month", fn: () => { const n = new Date(); const s = new Date(n.getFullYear(), n.getMonth() - 1, 1); const e = new Date(n.getFullYear(), n.getMonth(), 0); return { from: format(s, "yyyy-MM-dd"), to: format(e, "yyyy-MM-dd") }; } },
+                { label: "This Quarter", fn: () => { const n = new Date(); const q = Math.floor(n.getMonth() / 3); return { from: format(new Date(n.getFullYear(), q * 3, 1), "yyyy-MM-dd"), to: format(n, "yyyy-MM-dd") }; } },
                 { label: "Last 90 Days", fn: () => { const n = new Date(); const s = new Date(n); s.setDate(s.getDate() - 90); return { from: format(s, "yyyy-MM-dd"), to: format(n, "yyyy-MM-dd") }; } },
                 { label: "This Year", fn: () => { const n = new Date(); return { from: format(new Date(n.getFullYear(), 0, 1), "yyyy-MM-dd"), to: format(n, "yyyy-MM-dd") }; } },
               ].map((preset) => (

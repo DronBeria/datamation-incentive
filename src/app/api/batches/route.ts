@@ -123,17 +123,27 @@ export async function POST(req: NextRequest) {
     const randomTag = Math.random().toString(36).substring(2, 6).toUpperCase();
     const batchRef = `BT-${dateTag}-${randomTag}`;
 
+    // Admins self-approve; managers go through the draft → approval flow
+    const isAdminCreator = role === 'admin';
+    const initialStatus = isAdminCreator ? 'approved' : 'draft';
+    const now = new Date().toISOString();
+
     // 1. Create the Batch
     const { data: batch, error: bErr } = await supabase
       .from('incentive_batches')
       .insert({
         batch_name,
         created_by: session.id,
-        status: 'draft',
+        status: initialStatus,
         total_amount: totalAmount,
         period_start: period_start || null,
         period_end: period_end || null,
-        reference_number: batchRef
+        reference_number: batchRef,
+        ...(isAdminCreator && {
+          submitted_at: now,
+          approved_by: session.id,
+          approved_at: now,
+        }),
       })
       .select('id')
       .single();
@@ -191,15 +201,28 @@ export async function POST(req: NextRequest) {
     try {
       const { data: accountsList } = await supabase
         .from('users')
-        .select('email, roles!inner(name)')
+        .select('id, email, roles!inner(name)')
         .eq('roles.name', 'accounts')
         .eq('is_active', true);
 
       if (accountsList) {
+        const noticeMsg = isAdminCreator
+          ? `Batch "${batch_name}" (REF: ${batchRef}) has been created and auto-approved by an Administrator. It is ready for payment processing.`
+          : `A new payout bundle "${batch_name}" (REF: ${batchRef}) has been drafted and is awaiting managerial submission.`;
+
         for (const acc of (accountsList as any[])) {
-          // Changed to audit notice style
+          // In-app notification
+          if (isAdminCreator && acc.id) {
+            await supabase.from('notifications').insert({
+              user_id: acc.id,
+              title: 'Batch Ready for Payment',
+              message: `"${batch_name}" (₹${totalAmount.toLocaleString()}) was approved by admin and awaits disbursement.`,
+              type: 'info',
+            });
+          }
+          // Email notification
           if (acc.email) {
-            await sendIncentiveUpdate(acc.email, "Accounts Team", `A new payout bundle "${batch_name}" (REF: ${batchRef}) has been drafted and is awaiting managerial submission.`, totalAmount);
+            await sendIncentiveUpdate(acc.email, "Accounts Team", noticeMsg, totalAmount);
           }
         }
       }

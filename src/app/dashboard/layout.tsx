@@ -53,6 +53,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    fetch("/api/notifications")
+      .then(r => r.json())
+      .then(d => {
+        if (Array.isArray(d)) {
+          setUnreadCount(d.filter((n: any) => !n.is_read).length);
+        }
+      })
+      .catch(() => {});
+  }, [pathname]);
 
   useEffect(() => {
     if (!loading && !user) router.push("/");
@@ -111,6 +123,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           );
         })}
       </div>
+
+      {/* Collapse Toggle (desktop only) */}
+      {!isMobile && (
+        <div className="px-3 py-2 border-t border-slate-100">
+          <button
+            onClick={() => setCollapsed(c => !c)}
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-all ${collapsed ? "justify-center" : ""}`}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {collapsed ? <ChevronRight className="h-4 w-4 shrink-0" /> : <><ChevronLeft className="h-4 w-4 shrink-0" /><span>Collapse</span></>}
+          </button>
+        </div>
+      )}
 
       {/* Profile */}
       <div className="p-4 border-t border-slate-100 mt-auto">
@@ -176,7 +201,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <SyncStatusIcon />
             <Link href="/dashboard/notifications" className="relative h-9 w-9 rounded-lg hover:bg-slate-50 flex items-center justify-center transition-colors border border-slate-100">
               <Bell className="h-4 w-4 text-slate-400" />
-              <div className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-red-500 ring-2 ring-white" />
+              {unreadCount > 0 && (
+                <div className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 ring-2 ring-white flex items-center justify-center">
+                  <span className="text-[8px] font-bold text-white leading-none">{unreadCount > 9 ? "9+" : unreadCount}</span>
+                </div>
+              )}
             </Link>
             <div className={`h-9 pr-3 pl-1.5 rounded-lg ${roleTheme.bg} flex items-center gap-2 border border-slate-100 shadow-sm transition-all`}>
               <div className="h-6 w-6 rounded bg-white flex items-center justify-center border border-slate-100">

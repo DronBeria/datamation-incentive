@@ -78,22 +78,16 @@ export default function UsersPage() {
 
   const fetchUsers = () => {
     setLoading(true);
-    // Add timestamp to bust any browser/Next.js cache
     fetch(`/api/users?t=${Date.now()}`)
       .then(r => r.json())
       .then(d => {
         if (Array.isArray(d)) {
-          console.log("[USERS_PAGE] Server returned", d.length, "users");
           setUsers(d);
-          if (d.length > 0) {
-            toast.success(`Synced ${d.length} members from cloud`);
-          }
         } else if (d && d.error) {
-          toast.error("Cloud Error: " + d.error);
+          toast.error("Failed to load team: " + d.error);
         }
       })
-      .catch(err => {
-        console.error("[USERS_PAGE] Fetch failed:", err);
+      .catch(() => {
         toast.error("Network connection issue");
       })
       .finally(() => setLoading(false));
@@ -271,12 +265,7 @@ export default function UsersPage() {
       if (statusFilter === "active") matchStatus = isActive;
       else if (statusFilter === "inactive") matchStatus = !isActive;
 
-      const shown = matchSearch && matchRole && matchStatus;
-      if (!shown && users.length > 0 && search === "" && roleFilter === "all" && statusFilter === "all") {
-        console.warn("[USERS_PAGE] User filtered out unexpectedly:", u.full_name, { isPending, matchSearch, matchRole, matchStatus });
-      }
-
-      return shown;
+      return matchSearch && matchRole && matchStatus;
     });
   }, [users, search, roleFilter, statusFilter, activeTab]);
 

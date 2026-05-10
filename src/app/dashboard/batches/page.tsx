@@ -22,8 +22,8 @@ import {
   Plus, CheckCircle2, Loader2,
   ChevronDown, Search, Download, FileText,
   List, ChevronLeft, ChevronRight as ChevRight,
-  TrendingUp, Clock, Banknote, Layers, Calculator, ArrowRight, Info,
-  Zap, ShieldCheck, Trash2
+  TrendingUp, Clock, Banknote, Layers, Calculator, Info,
+  Zap, Trash2
 } from "lucide-react";
 import { syncToLocal } from "@/lib/hybrid-sync";
 import { DateRangePicker } from "@/components/date-range-picker";
@@ -60,11 +60,14 @@ function CalendarView({ batches, onBatchClick }: { batches: any[]; onBatchClick:
   const batchesByDay = useMemo(() => {
     const map: Record<number, any[]> = {};
     batches.forEach(b => {
-      const d = new Date(b.created_at || b.period_start);
-      if (d.getFullYear() === viewYear && d.getMonth() === viewMonth) {
-        const day = d.getDate();
-        if (!map[day]) map[day] = [];
-        map[day].push(b);
+      const rawDate = b.created_at || b.period_start;
+      if (!rawDate) return;
+      // Parse only the date portion to avoid timezone-shift artifacts
+      const datePart = String(rawDate).split("T")[0];
+      const [y, m, d] = datePart.split("-").map(Number);
+      if (y === viewYear && (m - 1) === viewMonth) {
+        if (!map[d]) map[d] = [];
+        map[d].push(b);
       }
     });
     return map;
@@ -120,6 +123,10 @@ function CalendarView({ batches, onBatchClick }: { batches: any[]; onBatchClick:
             </div>
           );
         })}
+        {/* Trailing empty cells to complete the last week row */}
+        {Array.from({ length: (7 - (firstDay + daysInMonth) % 7) % 7 }).map((_, i) => (
+          <div key={`t-${i}`} className="min-h-[120px] border-b border-r border-slate-50 bg-slate-50/5" />
+        ))}
       </div>
     </Card>
   );
@@ -268,20 +275,23 @@ function BatchDetailModal({ batch, onClose, user, onAction, actionLoading }: any
                 </Button>
               </>
             )}
-            {isApproved && canPay && (
+            {/* Pay N Selected — only show when items are actually checked */}
+            {isApproved && canPay && selectedIds.size > 0 && (
               <Button
                 onClick={() => onAction(batch.id, "pay_selected", null, { selectedItemIds: Array.from(selectedIds) })}
-                disabled={actionLoading === batch.id || selectedIds.size === 0}
+                disabled={actionLoading === batch.id}
                 className="flex-1 h-11 bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-sm font-bold text-sm flex items-center justify-center gap-2"
               >
                 {actionLoading === batch.id ? <Loader2 className="h-4 w-4 animate-spin" /> : (
-                  <>
-                    <Zap className="h-4 w-4" />
-                    Pay {selectedIds.size} Selected
-                  </>
+                  <><Zap className="h-4 w-4" />Pay {selectedIds.size} Selected</>
                 )}
               </Button>
             )}
+            {/* Accounts hint when nothing is selected */}
+            {isApproved && canPay && user?.role !== "admin" && selectedIds.size === 0 && (
+              <p className="flex-1 text-xs text-slate-400 font-medium self-center">Select commissions above to process individual payment</p>
+            )}
+            {/* Mark entire batch paid — admin only, when nothing is individually selected */}
             {batch.status === "approved" && user?.role === "admin" && selectedIds.size === 0 && (
               <Button onClick={() => onAction(batch.id, "mark_paid")} disabled={actionLoading === batch.id} className="flex-1 h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-sm font-bold text-sm">
                 {actionLoading === batch.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Mark Entire Batch Paid"}
@@ -457,7 +467,9 @@ function BatchesContent() {
   const stats = useMemo(() => ({
     total: batches.length,
     pending: batches.filter(b => b.status === "pending_approval").length,
-    activeValue: batches.filter(b => b.status !== "paid").reduce((s, b) => s + b.total_amount, 0),
+    activeValue: batches
+      .filter(b => ["draft", "pending_approval", "approved"].includes(b.status))
+      .reduce((s, b) => s + (b.total_amount || 0), 0),
   }), [batches]);
 
   const handleExportCSV = () => {
@@ -475,7 +487,10 @@ function BatchesContent() {
     exportToPDF("Commission Batches Report", BATCH_CSV_COLUMNS, filtered.map(b => ({ ...b, reference_number: b.reference_number || b.id })), "batches_list");
   };
 
-  const filtered = batches.filter(b => b.batch_name.toLowerCase().includes(search.toLowerCase()));
+  const filtered = useMemo(
+    () => batches.filter(b => (b.batch_name || "").toLowerCase().includes(search.toLowerCase())),
+    [batches, search]
+  );
 
   return (
     <div className="space-y-6 pb-10">
@@ -694,7 +709,12 @@ function BatchesContent() {
                       {["draft", "rejected"].includes(batch.status) && ["admin", "manager"].includes(user?.role || "") && (
                         <Button
                           variant="outline"
-                          onClick={(e) => { e.stopPropagation(); handleAction(batch.id, "delete"); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm("Delete this batch? All included commissions will be returned to the earned pool.")) {
+                              handleAction(batch.id, "delete");
+                            }
+                          }}
                           disabled={actionLoading === batch.id}
                           className="h-10 px-5 border-rose-200 text-rose-600 hover:bg-rose-50 rounded-xl font-semibold text-xs transition-all flex items-center gap-2"
                         >
@@ -723,24 +743,24 @@ function BatchesContent() {
 
       {/* ── Create Batch Dialog ─────────────────────────────── */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent className="max-w-[1300px] w-[98vw] p-0 overflow-hidden border border-slate-200 shadow-2xl rounded-2xl bg-white">
-          <div className="flex flex-col h-[90vh] max-h-[900px]">
+        <DialogContent className="max-w-[1080px] w-[96vw] p-0 overflow-hidden border border-slate-200 shadow-2xl rounded-2xl bg-white">
+          <div className="flex flex-col" style={{ height: "min(88vh, 860px)" }}>
 
             {/* ── Header ── */}
-            <div className="flex items-center justify-between px-8 py-5 border-b border-slate-100 bg-white shrink-0">
-              <div className="flex items-center gap-4">
-                <div className="h-10 w-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-sm">
-                  <Calculator className="h-5 w-5 text-white" />
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-white shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-xl bg-blue-600 flex items-center justify-center shadow-sm shrink-0">
+                  <Calculator className="h-4 w-4 text-white" />
                 </div>
-                <div>
-                  <DialogTitle className="text-lg font-semibold text-slate-900">Create Incentive Batch</DialogTitle>
-                  <p className="text-xs text-slate-400 mt-0.5">Select approved commissions and give the batch a name</p>
+                <div className="min-w-0">
+                  <DialogTitle className="text-base font-semibold text-slate-900 leading-tight">Create Incentive Batch</DialogTitle>
+                  <p className="text-[11px] text-slate-400 mt-0.5 leading-none">Select commissions from the pool and name the batch</p>
                 </div>
               </div>
               {selectedLogs.size > 0 && (
-                <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-100 rounded-xl">
-                  <TrendingUp className="h-4 w-4 text-blue-600" />
-                  <span className="text-sm font-bold text-blue-700">
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-lg shrink-0 ml-4">
+                  <TrendingUp className="h-3.5 w-3.5 text-blue-600" />
+                  <span className="text-xs font-bold text-blue-700 whitespace-nowrap">
                     {selectedLogs.size} selected · ₹{selectedItemsSummary.total.toLocaleString("en-IN")}
                   </span>
                 </div>
@@ -748,21 +768,21 @@ function BatchesContent() {
             </div>
 
             {/* ── Body: 2-column layout ── */}
-            <div className="flex flex-1 min-h-0">
+            <div className="flex flex-1 min-h-0 overflow-hidden">
 
-              {/* LEFT: Commission list (60%) */}
-              <div className="flex-[3] flex flex-col min-w-0 border-r border-slate-100">
+              {/* LEFT: Commission list (58%) */}
+              <div className="flex-[7] flex flex-col min-w-0 border-r border-slate-100" style={{ minWidth: 340 }}>
 
                 {/* Search + Select All toolbar */}
-                <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/50 shrink-0">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 bg-slate-50/60 shrink-0">
+                  <div className="relative flex-1 min-w-0">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
                     <input
                       type="text"
                       placeholder="Search by salesperson or client..."
                       value={logSearch}
                       onChange={e => setLogSearch(e.target.value)}
-                      className="w-full h-9 pl-9 pr-4 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
+                      className="w-full h-8 pl-8 pr-3 bg-white border border-slate-200 rounded-lg text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
                     />
                   </div>
                   <button
@@ -775,155 +795,164 @@ function BatchesContent() {
                       else visible.forEach(id => next.add(id));
                       setSelectedLogs(next);
                     }}
-                    className="h-9 px-4 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-600 hover:border-blue-400 hover:text-blue-600 transition-all shrink-0 whitespace-nowrap"
+                    className="h-8 px-3 rounded-lg bg-white border border-slate-200 text-[11px] font-semibold text-slate-600 hover:border-blue-400 hover:text-blue-600 transition-all shrink-0 whitespace-nowrap"
                   >
                     {filteredLogs.length > 0 && filteredLogs.every(l => selectedLogs.has(l.pool_id)) ? "Deselect All" : "Select All"}
                   </button>
                 </div>
 
                 {/* List */}
-                <div className="flex-1 overflow-y-auto px-6 py-4 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto px-4 py-3 custom-scrollbar space-y-1.5">
                   {salesLogs.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full text-center py-16 opacity-50">
-                      <List className="h-10 w-10 text-slate-300 mb-3" />
+                    <div className="flex flex-col items-center justify-center h-full text-center py-12 opacity-50">
+                      <List className="h-8 w-8 text-slate-300 mb-3" />
                       <p className="text-sm font-semibold text-slate-600">No payout items available</p>
-                      <p className="text-xs text-slate-400 mt-1">Earnings and adjustments must be approved/pending before batching</p>
+                      <p className="text-xs text-slate-400 mt-1">Commissions must be in earned status before batching</p>
                     </div>
                   ) : filteredLogs.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full text-center py-16">
-                      <p className="text-sm font-semibold text-slate-700">No results found</p>
+                    <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                      <p className="text-sm font-semibold text-slate-700">No results for "{logSearch}"</p>
                       <p className="text-xs text-slate-400 mt-1">Try a different search term</p>
                     </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {filteredLogs.map(log => {
-                        const active = selectedLogs.has(log.pool_id);
-                        const isAdj = log.pool_type === 'adjustment';
-                        return (
-                          <div
-                            key={log.pool_id}
-                            onClick={() => {
-                              const next = new Set(selectedLogs);
-                              active ? next.delete(log.pool_id) : next.add(log.pool_id);
-                              setSelectedLogs(next);
-                            }}
-                            className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer select-none transition-all ${active
-                              ? "bg-blue-50 border-blue-400 shadow-sm"
-                              : "bg-white border-slate-100 hover:border-slate-300 hover:bg-slate-50/80"
-                              }`}
-                          >
-                            <div className={`h-5 w-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${active ? "bg-blue-600 border-blue-600" : "border-slate-300 bg-white"
-                              }`}>
-                              {active && <CheckCircle2 className="h-3 w-3 text-white" />}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className={`text-sm font-semibold truncate ${active ? "text-blue-900" : "text-slate-900"}`}>
-                                {log.client_name || "Direct Commission"}
-                              </p>
-                              <p className="text-xs text-slate-500 mt-0.5">
-                                {log.salesperson_name} · {log.sale_date || new Date().toLocaleDateString()}
-                                {log.product && <span className="ml-1 text-slate-400">· {log.product}</span>}
-                                {isAdj && <Badge variant="outline" className="ml-2 scale-75 origin-left bg-purple-50 text-purple-600 border-purple-100 font-bold uppercase tracking-tight">Adjustment</Badge>}
-                              </p>
-                            </div>
-                            <div className="text-right shrink-0">
-                              <p className={`text-sm font-bold tabular-nums ${active ? "text-blue-700" : "text-slate-900"}`}>
-                                ₹{log.calculated_commission?.toLocaleString("en-IN")}
-                              </p>
-                              <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wide">{isAdj ? log.type : 'commission'}</p>
-                            </div>
+                  ) : filteredLogs.map(log => {
+                    const active = selectedLogs.has(log.pool_id);
+                    const isAdj = log.pool_type === 'adjustment';
+                    return (
+                      <div
+                        key={log.pool_id}
+                        onClick={() => {
+                          const next = new Set(selectedLogs);
+                          active ? next.delete(log.pool_id) : next.add(log.pool_id);
+                          setSelectedLogs(next);
+                        }}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer select-none transition-all ${active
+                          ? "bg-blue-50 border-blue-300 shadow-sm"
+                          : "bg-white border-slate-100 hover:border-slate-200 hover:bg-slate-50/60"
+                          }`}
+                      >
+                        {/* Checkbox */}
+                        <div className={`h-4 w-4 rounded border-2 flex items-center justify-center shrink-0 transition-all ${active ? "bg-blue-600 border-blue-600" : "border-slate-300 bg-white"}`}>
+                          {active && <CheckCircle2 className="h-2.5 w-2.5 text-white" />}
+                        </div>
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <p className={`text-xs font-semibold truncate ${active ? "text-blue-900" : "text-slate-900"}`}>
+                              {log.client_name || "Direct Commission"}
+                            </p>
+                            {isAdj && (
+                              <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-md bg-purple-50 text-purple-600 border border-purple-100">ADJ</span>
+                            )}
                           </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                          <p className="text-[10px] text-slate-400 mt-0.5 truncate">
+                            {log.salesperson_name}
+                            {log.sale_date ? ` · ${log.sale_date}` : ""}
+                            {log.product ? ` · ${log.product}` : ""}
+                          </p>
+                        </div>
+                        {/* Amount */}
+                        <div className="text-right shrink-0">
+                          <p className={`text-xs font-bold tabular-nums ${active ? "text-blue-700" : "text-slate-800"}`}>
+                            ₹{(log.calculated_commission || 0).toLocaleString("en-IN")}
+                          </p>
+                          <p className="text-[9px] text-slate-400 uppercase tracking-wide">{isAdj ? log.type : "commission"}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {/* Footer count */}
-                <div className="flex items-center justify-between px-6 py-3 border-t border-slate-100 bg-slate-50/50 shrink-0">
-                  <span className="text-xs text-slate-500">
-                    <span className="font-semibold text-slate-900">{selectedLogs.size}</span> of {salesLogs.length} commissions selected
+                <div className="flex items-center justify-between px-4 py-2.5 border-t border-slate-100 bg-slate-50/60 shrink-0">
+                  <span className="text-[11px] text-slate-500">
+                    <span className="font-bold text-slate-800">{selectedLogs.size}</span> of {salesLogs.length} items selected
                   </span>
                   {selectedLogs.size > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedLogs(new Set())}
-                      className="text-xs text-slate-400 hover:text-red-500 font-medium transition-colors"
-                    >
-                      Clear selection
+                    <button type="button" onClick={() => setSelectedLogs(new Set())}
+                      className="text-[11px] text-slate-400 hover:text-red-500 font-medium transition-colors">
+                      Clear
                     </button>
                   )}
                 </div>
               </div>
 
-              {/* RIGHT: Batch config (40%) */}
-              <div className="flex-[2] flex flex-col min-w-0 bg-slate-50/30">
+              {/* RIGHT: Batch config (42%) */}
+              <div className="flex-[5] flex flex-col min-w-0 bg-slate-50/20" style={{ minWidth: 280 }}>
 
-                <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto px-5 py-5 custom-scrollbar space-y-4">
+
                   {/* Batch name */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-700">Batch Name <span className="text-red-500">*</span></label>
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">Batch Name <span className="text-red-500">*</span></label>
                     <Input
                       value={batchName}
                       onChange={e => setBatchName(e.target.value)}
                       placeholder="e.g. Feb 2026 – Direct Sales"
-                      className="h-11 border-slate-200 bg-white rounded-lg text-sm font-medium text-slate-900 focus:ring-blue-500/20 focus:border-blue-400"
+                      className="h-10 border-slate-200 bg-white rounded-lg text-sm font-medium text-slate-900 focus:ring-blue-500/20 focus:border-blue-400"
                     />
-                    <p className="text-[11px] text-slate-400">This name will appear on all reports and notifications</p>
+                    <p className="text-[10px] text-slate-400">Appears on all reports and notifications</p>
                   </div>
 
                   {/* Summary card */}
-                  <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-4">
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Batch Summary</p>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-slate-500">Commissions selected</span>
-                        <span className="text-sm font-bold text-slate-900">{selectedLogs.size}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-slate-500">Total payout</span>
-                        <span className="text-base font-bold text-blue-600">₹{selectedItemsSummary.total.toLocaleString("en-IN")}</span>
-                      </div>
-                      {selectedItemsSummary.items.length > 0 && (
-                        <div className="pt-2 border-t border-slate-100 space-y-1.5 max-h-[160px] overflow-y-auto">
-                          {selectedItemsSummary.items.map(item => (
-                            <div key={item.id} className="flex items-center justify-between text-xs">
-                              <span className="text-slate-600 truncate max-w-[150px]">{item.salesperson_name}</span>
-                              <span className="text-slate-900 font-medium tabular-nums ml-2 shrink-0">₹{item.calculated_commission?.toLocaleString("en-IN")}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                  <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+                    <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Batch Summary</p>
                     </div>
+                    <div className="px-4 py-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-500">Items</span>
+                        <span className="text-xs font-bold text-slate-900">{selectedLogs.size}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-500">Total payout</span>
+                        <span className="text-sm font-bold text-blue-600">₹{selectedItemsSummary.total.toLocaleString("en-IN")}</span>
+                      </div>
+                    </div>
+                    {selectedItemsSummary.items.length > 0 && (
+                      <div className="border-t border-slate-100 px-4 py-3 space-y-1.5 max-h-[140px] overflow-y-auto custom-scrollbar">
+                        {selectedItemsSummary.items.map(item => (
+                          <div key={item.pool_id || item.id} className="flex items-center gap-2 text-[11px]">
+                            <span className="flex-1 min-w-0 text-slate-600 truncate">{item.salesperson_name}</span>
+                            <span className="text-slate-800 font-semibold tabular-nums shrink-0">₹{(item.calculated_commission || 0).toLocaleString("en-IN")}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
-                  {/* Info */}
-                  <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-4">
-                    <div className="flex items-start gap-3">
-                      <Zap className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-                      <div className="space-y-1">
-                        <p className="text-xs font-semibold text-amber-700">What happens next?</p>
-                        <p className="text-[11px] text-amber-600 leading-relaxed">
-                          Selected commissions will move from <strong>Approved</strong> to <strong>Accrued</strong> status. The batch enters a <strong>Draft</strong> state and must be submitted for admin approval before payment.
-                        </p>
+                  {/* Info — role-aware */}
+                  <div className={`rounded-xl border p-3.5 ${user?.role === "admin" ? "border-emerald-100 bg-emerald-50/50" : "border-amber-100 bg-amber-50/50"}`}>
+                    <div className="flex items-start gap-2.5">
+                      <Zap className={`h-3.5 w-3.5 shrink-0 mt-0.5 ${user?.role === "admin" ? "text-emerald-500" : "text-amber-500"}`} />
+                      <div className="space-y-1 min-w-0">
+                        <p className={`text-[11px] font-bold ${user?.role === "admin" ? "text-emerald-700" : "text-amber-700"}`}>What happens next?</p>
+                        {user?.role === "admin" ? (
+                          <p className="text-[10px] text-emerald-600 leading-relaxed">
+                            Commissions move to <strong>Accrued</strong> and the batch is <strong>auto-approved</strong> — no further sign-off needed. Accounts will be notified for payment.
+                          </p>
+                        ) : (
+                          <p className="text-[10px] text-amber-600 leading-relaxed">
+                            Commissions move to <strong>Accrued</strong>. Batch starts as <strong>Draft</strong> — submit for admin approval before accounts can process payment.
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Action buttons */}
-                <div className="px-6 py-5 border-t border-slate-100 bg-white flex flex-col gap-3 shrink-0">
+                <div className="px-5 py-4 border-t border-slate-100 bg-white flex flex-col gap-2 shrink-0">
                   <Button
                     onClick={handleCreate}
                     disabled={creating || selectedLogs.size === 0 || !batchName.trim()}
-                    className="h-11 w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold text-sm shadow-sm disabled:opacity-40 transition-all"
+                    className="h-10 w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold text-sm shadow-sm disabled:opacity-40 transition-all"
                   >
-                    {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : `Create Batch (${selectedLogs.size} items)`}
+                    {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : (user?.role === "admin" ? `Create & Auto-Approve (${selectedLogs.size} items)` : `Create Batch (${selectedLogs.size} items)`)}
                   </Button>
                   <Button
                     variant="outline"
                     onClick={() => setShowCreate(false)}
-                    className="h-10 w-full rounded-xl text-sm font-medium text-slate-600 border-slate-200 hover:bg-slate-50"
+                    className="h-9 w-full rounded-xl text-xs font-semibold text-slate-500 border-slate-200 hover:bg-slate-50"
                   >
                     Cancel
                   </Button>

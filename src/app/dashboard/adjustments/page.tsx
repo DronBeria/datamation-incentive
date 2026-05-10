@@ -82,6 +82,9 @@ export default function AdjustmentsPage() {
                 setShowCreate(false);
                 setForm({ user_id: "", amount: "", reason: "", type: "clawback" });
                 fetchData();
+            } else {
+                const d = await res.json().catch(() => ({}));
+                toast.error(d?.error || "Failed to create adjustment — please try again");
             }
         } finally { setCreating(false); }
     };
@@ -96,6 +99,9 @@ export default function AdjustmentsPage() {
             if (res.ok) {
                 toast.success(`Adjustment ${status} successfully`);
                 fetchData();
+            } else {
+                const d = await res.json().catch(() => ({}));
+                toast.error(d?.error || "Status update failed");
             }
         } catch { toast.error("Update failed"); }
     };
@@ -125,12 +131,15 @@ export default function AdjustmentsPage() {
         });
     }, [adjustments, search, typeFilter]);
 
-    const stats = useMemo(() => ({
-        total: adjustments.length,
-        clawbacks: adjustments.filter(a => a.type === "clawback").reduce((s, a) => s + a.amount, 0),
-        bonuses: adjustments.filter(a => a.type === "bonus").reduce((s, a) => s + a.amount, 0),
-        net: adjustments.reduce((s, a) => s + (a.type === "clawback" ? -a.amount : a.amount), 0),
-    }), [adjustments]);
+    const stats = useMemo(() => {
+        const applied = adjustments.filter(a => a.status === "applied");
+        return {
+            total: adjustments.length,
+            clawbacks: applied.filter(a => a.type === "clawback").reduce((s, a) => s + a.amount, 0),
+            bonuses: applied.filter(a => a.type === "bonus").reduce((s, a) => s + a.amount, 0),
+            net: applied.reduce((s, a) => s + (a.type === "clawback" ? -a.amount : a.amount), 0),
+        };
+    }, [adjustments]);
 
     const handleExportCSV = () => {
         if (!filtered.length) return toast.error("No records available");
@@ -267,7 +276,7 @@ export default function AdjustmentsPage() {
                             <TableBody>
                                 {filtered.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="text-center py-20">
+                                        <TableCell colSpan={6} className="text-center py-20">
                                             <div className="flex flex-col items-center gap-3">
                                                 <Sliders className="h-8 w-8 text-slate-200" />
                                                 <p className="text-sm font-semibold text-slate-900">No adjustments found</p>

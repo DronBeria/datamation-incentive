@@ -133,7 +133,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       if (oldStatus !== "pending_approval") return NextResponse.json({ error: "Only pending batches can be rejected" }, { status: 400 });
       if (userRole !== "admin") return NextResponse.json({ error: "Only administrators can reject submissions" }, { status: 403 });
 
-      newStatus = "draft";
+      newStatus = "rejected";
       await supabase.from('incentive_batches').update({
         status: newStatus,
         rejection_reason: rejection_reason || "Rejected by admin",
@@ -293,7 +293,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getSession();
     if (!session || !["admin", "manager"].includes(session.role.toLowerCase())) {
