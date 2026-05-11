@@ -118,147 +118,26 @@ CREATE INDEX IF NOT EXISTS idx_audit_created      ON public.audit_logs (created_
 
 -- ────────────────────────────────────────────────────────────
 -- 6. ATOMIC BATCH CREATION STORED PROCEDURE
--- Wraps the entire batch creation in a single DB transaction:
--- insert batch → insert items → update sales_logs → update adjustments
--- Idempotency check is inside the transaction.
+-- SKIPPED — column types (created_by, salesperson_id) vary per
+-- Supabase project. The API has a full sequential fallback that
+-- activates automatically when this function is absent (code 42883).
+-- The idempotency key on incentive_batches (section 3) prevents
+-- double-creation even without the stored procedure.
 -- ────────────────────────────────────────────────────────────
-CREATE OR REPLACE FUNCTION create_incentive_batch(
-  p_batch_name       TEXT,
-  p_created_by       TEXT,          -- user id (uuid or int stored as text)
-  p_status           TEXT,
-  p_total_amount     NUMERIC,
-  p_period_start     DATE,
-  p_period_end       DATE,
-  p_reference_number TEXT,
-  p_idempotency_key  TEXT,
-  p_submitted_at     TIMESTAMPTZ,
-  p_approved_by      TEXT,
-  p_approved_at      TIMESTAMPTZ,
-  p_items            JSONB,          -- array of item objects
-  p_log_ids          JSONB,          -- array of sales_log ids (integers)
-  p_adj_ids          JSONB           -- array of adjustment ids (integers)
-)
-RETURNS JSONB
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_batch_id    BIGINT;
-  v_existing_id BIGINT;
-  v_item        JSONB;
-  v_log_id      BIGINT;
-  v_adj_id      BIGINT;
-BEGIN
-  -- ── Idempotency guard ──────────────────────────────────────
-  IF p_idempotency_key IS NOT NULL THEN
-    SELECT id INTO v_existing_id
-      FROM incentive_batches
-     WHERE idempotency_key = p_idempotency_key
-     LIMIT 1;
-
-    IF v_existing_id IS NOT NULL THEN
-      RETURN jsonb_build_object('id', v_existing_id, 'duplicate', true);
-    END IF;
-  END IF;
-
-  -- ── Verify sales logs are still available ─────────────────
-  IF jsonb_array_length(p_log_ids) > 0 THEN
-    IF EXISTS (
-      SELECT 1
-        FROM sales_logs sl
-       WHERE sl.id = ANY(
-               SELECT (value::TEXT)::BIGINT
-                 FROM jsonb_array_elements(p_log_ids)
-             )
-         AND (sl.status <> 'earned' OR sl.dispute_status = 'flagged')
-    ) THEN
-      RAISE EXCEPTION 'ITEMS_UNAVAILABLE: One or more commission items are no longer available for batching';
-    END IF;
-  END IF;
-
-  -- ── Insert batch ───────────────────────────────────────────
-  INSERT INTO incentive_batches (
-    batch_name, created_by, status, total_amount,
-    period_start, period_end, reference_number, idempotency_key,
-    submitted_at, approved_by, approved_at
-  )
-  VALUES (
-    p_batch_name,
-    p_created_by::BIGINT,
-    p_status,
-    p_total_amount,
-    p_period_start,
-    p_period_end,
-    p_reference_number,
-    p_idempotency_key,
-    p_submitted_at,
-    CASE WHEN p_approved_by IS NOT NULL THEN p_approved_by::BIGINT ELSE NULL END,
-    p_approved_at
-  )
-  RETURNING id INTO v_batch_id;
-
-  -- ── Insert batch items ─────────────────────────────────────
-  FOR v_item IN SELECT * FROM jsonb_array_elements(p_items)
-  LOOP
-    INSERT INTO batch_items (
-      batch_id, salesperson_id, sales_log_id, adjustment_id, amount, description
-    )
-    VALUES (
-      v_batch_id,
-      (v_item->>'salesperson_id')::BIGINT,
-      CASE WHEN v_item->>'sales_log_id' IS NOT NULL
-           THEN (v_item->>'sales_log_id')::BIGINT ELSE NULL END,
-      CASE WHEN v_item->>'adjustment_id' IS NOT NULL
-           THEN (v_item->>'adjustment_id')::BIGINT ELSE NULL END,
-      (v_item->>'amount')::NUMERIC,
-      COALESCE(v_item->>'description', '')
-    );
-  END LOOP;
-
-  -- ── Update sales log statuses → accrued ───────────────────
-  IF jsonb_array_length(p_log_ids) > 0 THEN
-    UPDATE sales_logs
-       SET status = 'accrued', updated_at = NOW()
-     WHERE id = ANY(
-             SELECT (value::TEXT)::BIGINT
-               FROM jsonb_array_elements(p_log_ids)
-           );
-  END IF;
-
-  -- ── Update adjustment statuses → applied ──────────────────
-  IF jsonb_array_length(p_adj_ids) > 0 THEN
-    UPDATE adjustments
-       SET status = 'applied', updated_at = NOW()
-     WHERE id = ANY(
-             SELECT (value::TEXT)::BIGINT
-               FROM jsonb_array_elements(p_adj_ids)
-           );
-  END IF;
-
-  RETURN jsonb_build_object('id', v_batch_id, 'duplicate', false);
-
-EXCEPTION
-  WHEN OTHERS THEN
-    -- Re-raise with context so the API route can return a proper error
-    RAISE;
-END;
-$$;
-
--- Grant execute to service role (the key used by the API)
-GRANT EXECUTE ON FUNCTION create_incentive_batch TO service_role;
 
 -- ────────────────────────────────────────────────────────────
 -- 7. QUOTA TABLE (for Priority 3 - Quota Management UI)
 -- Create if it doesn't exist yet
 -- ────────────────────────────────────────────────────────────
+-- NOTE: No FK to users(id) — users.id type varies across Supabase setups.
+-- Referential integrity is enforced at the API layer.
 CREATE TABLE IF NOT EXISTS public.quotas (
   id            BIGSERIAL PRIMARY KEY,
-  user_id       BIGINT NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  user_id       TEXT NOT NULL,
   period_start  DATE NOT NULL,
   period_end    DATE NOT NULL,
   target_amount NUMERIC(15,2) NOT NULL DEFAULT 0,
-  created_by    BIGINT REFERENCES public.users(id),
+  created_by    TEXT,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (user_id, period_start, period_end)
@@ -276,7 +155,7 @@ CREATE TABLE IF NOT EXISTS public.sale_attachments (
   file_name    TEXT NOT NULL,
   file_url     TEXT NOT NULL,
   file_size    BIGINT DEFAULT 0,
-  uploaded_by  BIGINT REFERENCES public.users(id),
+  uploaded_by  TEXT,
   created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
