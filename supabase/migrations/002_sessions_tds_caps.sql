@@ -10,7 +10,7 @@
 -- ────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.user_sessions (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id         UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  user_id         BIGINT NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   token_hash      TEXT NOT NULL,          -- SHA-256 of JWT token
   ip_address      TEXT,
   user_agent      TEXT,
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS public.system_settings (
   key         TEXT PRIMARY KEY,
   value       TEXT NOT NULL,
   description TEXT,
-  updated_by  UUID REFERENCES public.users(id),
+  updated_by  BIGINT REFERENCES public.users(id),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS public.report_schedules (
   recipient_roles TEXT[] DEFAULT ARRAY['admin','manager'],
   is_active   BOOLEAN NOT NULL DEFAULT true,
   last_sent   TIMESTAMPTZ,
-  created_by  UUID REFERENCES public.users(id),
+  created_by  BIGINT REFERENCES public.users(id),
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

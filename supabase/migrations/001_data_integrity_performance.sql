@@ -15,10 +15,10 @@ ALTER TABLE public.incentive_batches
   ADD COLUMN IF NOT EXISTS period_start   DATE             DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS period_end     DATE             DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS submitted_at   TIMESTAMPTZ      DEFAULT NULL,
-  ADD COLUMN IF NOT EXISTS approved_by    UUID             DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS approved_by    BIGINT           DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS approved_at    TIMESTAMPTZ      DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS paid_at        TIMESTAMPTZ      DEFAULT NULL,
-  ADD COLUMN IF NOT EXISTS paid_by        UUID             DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS paid_by        BIGINT           DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS rejection_reason TEXT           DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS reference_number TEXT           DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS updated_at     TIMESTAMPTZ      DEFAULT NOW();
@@ -185,7 +185,7 @@ BEGIN
   )
   VALUES (
     p_batch_name,
-    p_created_by::UUID,
+    p_created_by::BIGINT,
     p_status,
     p_total_amount,
     p_period_start,
@@ -193,7 +193,7 @@ BEGIN
     p_reference_number,
     p_idempotency_key,
     p_submitted_at,
-    CASE WHEN p_approved_by IS NOT NULL THEN p_approved_by::UUID ELSE NULL END,
+    CASE WHEN p_approved_by IS NOT NULL THEN p_approved_by::BIGINT ELSE NULL END,
     p_approved_at
   )
   RETURNING id INTO v_batch_id;
@@ -206,7 +206,7 @@ BEGIN
     )
     VALUES (
       v_batch_id,
-      (v_item->>'salesperson_id')::UUID,
+      (v_item->>'salesperson_id')::BIGINT,
       CASE WHEN v_item->>'sales_log_id' IS NOT NULL
            THEN (v_item->>'sales_log_id')::BIGINT ELSE NULL END,
       CASE WHEN v_item->>'adjustment_id' IS NOT NULL
@@ -254,11 +254,11 @@ GRANT EXECUTE ON FUNCTION create_incentive_batch TO service_role;
 -- ────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.quotas (
   id            BIGSERIAL PRIMARY KEY,
-  user_id       UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  user_id       BIGINT NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   period_start  DATE NOT NULL,
   period_end    DATE NOT NULL,
   target_amount NUMERIC(15,2) NOT NULL DEFAULT 0,
-  created_by    UUID REFERENCES public.users(id),
+  created_by    BIGINT REFERENCES public.users(id),
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (user_id, period_start, period_end)
@@ -276,7 +276,7 @@ CREATE TABLE IF NOT EXISTS public.sale_attachments (
   file_name    TEXT NOT NULL,
   file_url     TEXT NOT NULL,
   file_size    BIGINT DEFAULT 0,
-  uploaded_by  UUID REFERENCES public.users(id),
+  uploaded_by  BIGINT REFERENCES public.users(id),
   created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
