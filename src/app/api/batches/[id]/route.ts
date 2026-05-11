@@ -157,6 +157,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       if (oldStatus !== "approved") return NextResponse.json({ error: "Only approved batches can be marked as paid" }, { status: 400 });
       if (!["accounts", "admin"].includes(userRole)) return NextResponse.json({ error: "Forbidden: Accounts privilege required" }, { status: 403 });
 
+      // Fetch TDS settings once
+      const { data: settingsRows } = await supabase.from('system_settings').select('key, value');
+      const settings = Object.fromEntries((settingsRows || []).map((r: any) => [r.key, r.value]));
+      const tdsEnabled = settings.tds_enabled === 'true';
+      const tdsRate = parseFloat(settings.tds_rate || '10') / 100;
+
       newStatus = "paid";
       await supabase.from('incentive_batches').update({
         status: newStatus,
@@ -193,10 +199,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             amount: i.amount || 0,
           }));
 
+          const tdsDeduction = tdsEnabled ? Math.round(total * tdsRate * 100) / 100 : 0;
+          const tdsNote = tdsEnabled ? ` (TDS: ₹${tdsDeduction.toLocaleString()})` : '';
+
           await supabase.from('notifications').insert({
             user_id: spId,
             title: 'Payout Disbursed!',
-            message: `Your commission of ₹${total.toLocaleString()} has been disbursed. Batch: ${batch.batch_name} (${batch.reference_number}). Items: ${itemCount} transactions.`,
+            message: `Your commission of ₹${total.toLocaleString()}${tdsNote} has been disbursed. Batch: ${batch.batch_name} (${batch.reference_number}). Items: ${itemCount} transactions.`,
             type: 'success'
           });
 
@@ -274,6 +283,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }).eq('id', id);
 
       // 6. Notifications and Emails
+      const { data: partialSettingsRows } = await supabase.from('system_settings').select('key, value');
+      const partialSettings = Object.fromEntries((partialSettingsRows || []).map((r: any) => [r.key, r.value]));
+      const partialTdsEnabled = partialSettings.tds_enabled === 'true';
+      const partialTdsRate = parseFloat(partialSettings.tds_rate || '10') / 100;
+
       const paidDatePartial = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
       const salespersons = Array.from(new Set(items.map(i => i.salesperson_id)));
       for (const spId of salespersons) {
@@ -285,10 +299,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           amount: i.amount || 0,
         }));
 
+        const partialTdsDeduction = partialTdsEnabled ? Math.round(total * partialTdsRate * 100) / 100 : 0;
+        const partialTdsNote = partialTdsEnabled ? ` (TDS: ₹${partialTdsDeduction.toLocaleString()})` : '';
+
         await supabase.from('notifications').insert({
           user_id: spId,
           title: 'Payout Disbursed!',
-          message: `Your commission of ₹${total.toLocaleString()} has been disbursed. Batch: ${batch.batch_name} (${batch.reference_number}). Items: ${itemCount} transactions.`,
+          message: `Your commission of ₹${total.toLocaleString()}${partialTdsNote} has been disbursed. Batch: ${batch.batch_name} (${batch.reference_number}). Items: ${itemCount} transactions.`,
           type: 'success'
         });
 

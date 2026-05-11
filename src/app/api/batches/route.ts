@@ -2,9 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { createClient } from "@supabase/supabase-js";
 import { sendIncentiveUpdate } from "@/lib/email";
+import { rateLimit, RATE_LIMITS, getClientIp } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+const batchWriteLimiter = rateLimit(RATE_LIMITS.API_WRITE);
 
 function getSupabase() {
   return createClient(
@@ -102,6 +105,14 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const rl = batchWriteLimiter.check(getClientIp(req));
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: "Too many requests — please wait before creating another batch." },
+      { status: 429, headers: batchWriteLimiter.headers(rl) }
+    );
+  }
+
   try {
     const session = await getSession();
     const role = (session?.role || "").toLowerCase();

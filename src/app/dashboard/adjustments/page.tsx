@@ -17,7 +17,7 @@ import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Loader2, ArrowDownCircle, ArrowUpCircle, Search, Download, Sliders, TrendingDown, TrendingUp, Minus, Sparkles, User, ArrowRight, Wallet, History, Trash2 } from "lucide-react";
+import { Plus, Loader2, ArrowDownCircle, ArrowUpCircle, Search, Download, Sliders, TrendingDown, TrendingUp, Minus, Sparkles, User, ArrowRight, Wallet, History, Trash2, X } from "lucide-react";
 import { downloadCSV, exportToExcel, exportToPDF } from "@/lib/export-utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
@@ -50,6 +50,10 @@ export default function AdjustmentsPage() {
     const [form, setForm] = useState({
         user_id: "", amount: "", reason: "", type: "clawback",
     });
+
+    // Bulk selection state
+    const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+    const [bulkLoading, setBulkLoading] = useState(false);
 
     useEffect(() => {
         fetch("/api/users")
@@ -133,6 +137,89 @@ export default function AdjustmentsPage() {
         };
     }, [adjustments]);
 
+    // Bulk selection helpers
+    const isManagerOrAccounts = ["admin", "manager", "accounts"].includes(user?.role || "");
+    const isManagerOnly = ["admin", "manager"].includes(user?.role || "");
+
+    const allVisibleSelected = filtered.length > 0 && filtered.every(a => selectedIds.has(a.id));
+    const someVisibleSelected = filtered.some(a => selectedIds.has(a.id));
+
+    const toggleSelectAll = () => {
+        if (allVisibleSelected) {
+            setSelectedIds(prev => {
+                const next = new Set(prev);
+                filtered.forEach(a => next.delete(a.id));
+                return next;
+            });
+        } else {
+            setSelectedIds(prev => {
+                const next = new Set(prev);
+                filtered.forEach(a => next.add(a.id));
+                return next;
+            });
+        }
+    };
+
+    const toggleSelectOne = (id: number) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id); else next.add(id);
+            return next;
+        });
+    };
+
+    const handleBulkApply = async () => {
+        setBulkLoading(true);
+        let ok = 0; let fail = 0;
+        for (const id of selectedIds) {
+            try {
+                const res = await fetch(`/api/adjustments/${id}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ status: "applied" }),
+                });
+                if (res.ok) ok++; else fail++;
+            } catch { fail++; }
+        }
+        setBulkLoading(false);
+        invalidateAdjustments();
+        setSelectedIds(new Set());
+        if (ok > 0) toast.success(`${ok} adjustment${ok > 1 ? "s" : ""} applied`);
+        if (fail > 0) toast.error(`${fail} failed`);
+    };
+
+    const handleBulkCancel = async () => {
+        setBulkLoading(true);
+        let ok = 0; let fail = 0;
+        for (const id of selectedIds) {
+            try {
+                const res = await fetch(`/api/adjustments/${id}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ status: "cancelled" }),
+                });
+                if (res.ok) ok++; else fail++;
+            } catch { fail++; }
+        }
+        setBulkLoading(false);
+        invalidateAdjustments();
+        setSelectedIds(new Set());
+        if (ok > 0) toast.success(`${ok} adjustment${ok > 1 ? "s" : ""} cancelled`);
+        if (fail > 0) toast.error(`${fail} failed`);
+    };
+
+    const handleBulkExport = () => {
+        const selectedRows = filtered.filter(a => selectedIds.has(a.id));
+        if (!selectedRows.length) return;
+        downloadCSV(selectedRows.map(a => ({
+            ...a,
+            reference_number: a.reference_number || a.id,
+            amount: `${TYPE_CONFIG[a.type]?.sign || ""}₹${Math.abs(a.amount).toLocaleString("en-IN")}`,
+            created_at: new Date(a.created_at).toLocaleDateString(),
+        })), "selected_adjustments_export", ADJ_CSV_COLUMNS);
+        toast.success(`Exported ${selectedRows.length} record${selectedRows.length > 1 ? "s" : ""}`);
+    };
+
     const handleExportCSV = () => {
         if (!filtered.length) return toast.error("No records available");
         downloadCSV(filtered.map(a => ({
@@ -164,7 +251,7 @@ export default function AdjustmentsPage() {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 pb-10">
             {/* Page Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
@@ -257,7 +344,16 @@ export default function AdjustmentsPage() {
                         <Table>
                             <TableHeader>
                                 <TableRow className="bg-slate-50/50 border-none">
-                                    <TableHead className="py-4 pl-6 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Recipient</TableHead>
+                                    <TableHead className="py-4 pl-6 w-10">
+                                        <input
+                                            type="checkbox"
+                                            checked={allVisibleSelected}
+                                            ref={el => { if (el) el.indeterminate = someVisibleSelected && !allVisibleSelected; }}
+                                            onChange={toggleSelectAll}
+                                            className="h-4 w-4 rounded border-slate-300 accent-blue-600 cursor-pointer"
+                                        />
+                                    </TableHead>
+                                    <TableHead className="py-4 pl-2 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Recipient</TableHead>
                                     <TableHead className="py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Type</TableHead>
                                     <TableHead className="py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Reason</TableHead>
                                     <TableHead className="py-4 text-right text-[11px] font-bold text-slate-500 uppercase tracking-widest">Amount</TableHead>
@@ -268,7 +364,7 @@ export default function AdjustmentsPage() {
                             <TableBody>
                                 {filtered.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="text-center py-20">
+                                        <TableCell colSpan={7} className="text-center py-20">
                                             <div className="flex flex-col items-center gap-3">
                                                 <Sliders className="h-8 w-8 text-slate-200" />
                                                 <p className="text-sm font-semibold text-slate-900">No adjustments found</p>
@@ -277,9 +373,18 @@ export default function AdjustmentsPage() {
                                     </TableRow>
                                 ) : filtered.map(a => {
                                     const cfg = TYPE_CONFIG[a.type] || TYPE_CONFIG.manual_adjustment;
+                                    const isSelected = selectedIds.has(a.id);
                                     return (
-                                        <TableRow key={a.id} className="group hover:bg-slate-50/50 transition-all border-b border-slate-50 last:border-none">
-                                            <TableCell className="pl-6 py-4">
+                                        <TableRow key={a.id} className={`group hover:bg-slate-50/50 transition-all border-b border-slate-50 last:border-none ${isSelected ? "bg-blue-50/30" : ""}`}>
+                                            <TableCell className="pl-6 py-4 w-10">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isSelected}
+                                                    onChange={() => toggleSelectOne(a.id)}
+                                                    className="h-4 w-4 rounded border-slate-300 accent-blue-600 cursor-pointer"
+                                                />
+                                            </TableCell>
+                                            <TableCell className="pl-2 py-4">
                                                 <div className="flex items-center gap-3">
                                                     <div className="h-8 w-8 rounded-lg bg-slate-900 text-white flex items-center justify-center font-bold text-xs shadow-sm">
                                                         {(a.full_name || "?")[0]}
@@ -343,6 +448,34 @@ export default function AdjustmentsPage() {
                         </Table>
                     </div>
                 </Card>
+            )}
+
+            {/* Bulk Action Floating Bar */}
+            {selectedIds.size > 0 && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 px-5 py-3 bg-slate-900 text-white rounded-2xl shadow-2xl border border-slate-700 animate-in slide-in-from-bottom-4">
+                    {bulkLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-slate-300" />
+                    ) : (
+                        <span className="text-sm font-semibold">{selectedIds.size} selected</span>
+                    )}
+                    <div className="h-4 w-px bg-slate-600" />
+                    {isManagerOrAccounts && (
+                        <Button size="sm" disabled={bulkLoading} className="h-8 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold" onClick={handleBulkApply}>
+                            Apply All
+                        </Button>
+                    )}
+                    {isManagerOnly && (
+                        <Button size="sm" variant="outline" disabled={bulkLoading} className="h-8 border-slate-600 text-white hover:bg-slate-800 rounded-lg text-xs font-semibold" onClick={handleBulkCancel}>
+                            Cancel All
+                        </Button>
+                    )}
+                    <Button size="sm" variant="outline" disabled={bulkLoading} className="h-8 border-slate-600 text-white hover:bg-slate-800 rounded-lg text-xs font-semibold" onClick={handleBulkExport}>
+                        Export
+                    </Button>
+                    <button onClick={() => setSelectedIds(new Set())} className="text-slate-400 hover:text-white ml-1">
+                        <X className="h-4 w-4" />
+                    </button>
+                </div>
             )}
 
             {/* Create Adjustment Dialog */}
@@ -470,4 +603,3 @@ function fmt(n: number) {
     if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
     return n.toLocaleString("en-IN");
 }
-

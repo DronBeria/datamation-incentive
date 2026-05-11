@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { createClient } from "@supabase/supabase-js";
+import { rateLimit, RATE_LIMITS, getClientIp } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+const salesWriteLimiter = rateLimit(RATE_LIMITS.API_WRITE);
 
 function getSupabase() {
   return createClient(
@@ -81,6 +84,14 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const rl = salesWriteLimiter.check(getClientIp(req));
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: "Too many requests — please slow down before logging more sales." },
+      { status: 429, headers: salesWriteLimiter.headers(rl) }
+    );
+  }
+
   try {
     const session = await getSession();
     const role = (session?.role || "").toLowerCase();
@@ -140,6 +151,17 @@ export async function POST(req: NextRequest) {
     }
 
     if (isNaN(calculatedCommission) || !isFinite(calculatedCommission)) calculatedCommission = 0;
+
+    // Enforce commission floor (min threshold) — if below minimum, set to 0
+    const activeRules = (assignment as any)?.scheme || null;
+    if (activeRules?.min_commission_threshold && calculatedCommission > 0 && calculatedCommission < activeRules.min_commission_threshold) {
+      calculatedCommission = 0;
+    }
+    // Enforce commission cap (maximum)
+    if (activeRules?.max_commission && calculatedCommission > activeRules.max_commission) {
+      calculatedCommission = activeRules.max_commission;
+    }
+
     const managerOverride = ((assignment as any)?.user?.manager_id && calculatedCommission > 0) ? (calculatedCommission * 0.10) : 0;
 
     // Generate Professional Sales Reference: SL-YYYYMMDD-XXXX

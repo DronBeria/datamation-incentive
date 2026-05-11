@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { createClient } from "@supabase/supabase-js";
 import { sendIncentiveUpdate } from "@/lib/email";
+import { rateLimit, RATE_LIMITS, getClientIp } from "@/lib/rate-limit";
+
+const adjWriteLimiter = rateLimit(RATE_LIMITS.API_WRITE);
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +66,14 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+    const rl = adjWriteLimiter.check(getClientIp(req));
+    if (!rl.success) {
+        return NextResponse.json(
+            { error: "Too many requests — please wait before creating another adjustment." },
+            { status: 429, headers: adjWriteLimiter.headers(rl) }
+        );
+    }
+
     try {
         const session = await getSession();
         const role = (session?.role || "").toLowerCase();

@@ -24,7 +24,7 @@ import { downloadCSV, exportToExcel, exportToPDF } from "@/lib/export-utils";
 import {
   Plus, Loader2, Search, CheckCircle2, XCircle, MoreHorizontal,
   ShoppingCart, TrendingUp, Clock, Banknote, Download, Info,
-  Eye, ArrowRight, User, Package, Sparkles, Target, Flag, CheckSquare, AlertTriangle, Trash2, Upload, FileSpreadsheet,
+  Eye, ArrowRight, User, Package, Sparkles, Target, Flag, CheckSquare, AlertTriangle, Trash2, Upload, FileSpreadsheet, X,
 } from "lucide-react";
 import { DateRangePicker } from "@/components/date-range-picker";
 
@@ -77,6 +77,10 @@ export default function SalesPage() {
   const [disputeLog, setDisputeLog] = useState<any>(null);
   const [disputeNote, setDisputeNote] = useState("");
   const [disputeSubmitting, setDisputeSubmitting] = useState(false);
+
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   const queryParams = Object.fromEntries([
     dateRange.from ? ["from", dateRange.from] : [],
@@ -286,6 +290,85 @@ export default function SalesPage() {
 
   const isManager = ["admin", "manager"].includes(user?.role || "");
 
+  // Bulk selection helpers
+  const allVisibleSelected = filtered.length > 0 && filtered.every(l => selectedIds.has(l.id));
+  const someVisibleSelected = filtered.some(l => selectedIds.has(l.id));
+
+  const toggleSelectAll = () => {
+    if (allVisibleSelected) {
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        filtered.forEach(l => next.delete(l.id));
+        return next;
+      });
+    } else {
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        filtered.forEach(l => next.add(l.id));
+        return next;
+      });
+    }
+  };
+
+  const toggleSelectOne = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkApprove = async () => {
+    setBulkLoading(true);
+    let ok = 0; let fail = 0;
+    for (const id of selectedIds) {
+      try {
+        const res = await fetch(`/api/sales/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "approve" }),
+        });
+        if (res.ok) ok++; else fail++;
+      } catch { fail++; }
+    }
+    setBulkLoading(false);
+    invalidateSales();
+    setSelectedIds(new Set());
+    if (ok > 0) toast.success(`${ok} sale${ok > 1 ? "s" : ""} approved`);
+    if (fail > 0) toast.error(`${fail} failed to approve`);
+  };
+
+  const handleBulkReject = async () => {
+    setBulkLoading(true);
+    let ok = 0; let fail = 0;
+    for (const id of selectedIds) {
+      try {
+        const res = await fetch(`/api/sales/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "reject" }),
+        });
+        if (res.ok) ok++; else fail++;
+      } catch { fail++; }
+    }
+    setBulkLoading(false);
+    invalidateSales();
+    setSelectedIds(new Set());
+    if (ok > 0) toast.success(`${ok} sale${ok > 1 ? "s" : ""} rejected`);
+    if (fail > 0) toast.error(`${fail} failed to reject`);
+  };
+
+  const handleBulkExport = () => {
+    const selectedRows = filtered.filter(l => selectedIds.has(l.id));
+    if (!selectedRows.length) return;
+    downloadCSV(selectedRows.map(l => ({
+      ...l,
+      reference_number: l.reference_number || l.id,
+      status: STATUS_MAP[l.status]?.label || l.status,
+    })), "selected_sales_export", SALES_CSV_COLUMNS);
+    toast.success(`Exported ${selectedRows.length} record${selectedRows.length > 1 ? "s" : ""}`);
+  };
+
   const handleExportCSV = () => {
     if (!filtered.length) return toast.error("No data available");
     downloadCSV(filtered.map(l => ({
@@ -413,7 +496,16 @@ export default function SalesPage() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-slate-50/50 hover:bg-slate-50/50 border-none">
-                  <TableHead className="py-5 pl-8 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Client / Salesperson</TableHead>
+                  <TableHead className="py-5 pl-6 w-10">
+                    <input
+                      type="checkbox"
+                      checked={allVisibleSelected}
+                      ref={el => { if (el) el.indeterminate = someVisibleSelected && !allVisibleSelected; }}
+                      onChange={toggleSelectAll}
+                      className="h-4 w-4 rounded border-slate-300 accent-blue-600 cursor-pointer"
+                    />
+                  </TableHead>
+                  <TableHead className="py-5 pl-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Client / Salesperson</TableHead>
                   <TableHead className="py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Product / Units</TableHead>
                   <TableHead className="py-5 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Deal Value</TableHead>
                   <TableHead className="py-5 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Commission</TableHead>
@@ -424,7 +516,7 @@ export default function SalesPage() {
               <TableBody>
                 {filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-20">
+                    <TableCell colSpan={7} className="text-center py-20">
                       <div className="flex flex-col items-center gap-3">
                         <div className="h-12 w-12 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 shadow-sm">
                           <ShoppingCart className="h-6 w-6 text-slate-300" />
@@ -435,9 +527,18 @@ export default function SalesPage() {
                   </TableRow>
                 ) : filtered.map(log => {
                   const cfg = STATUS_MAP[log.status];
+                  const isSelected = selectedIds.has(log.id);
                   return (
-                    <TableRow key={log.id} className="group hover:bg-slate-50/50 transition-all border-b border-slate-50 last:border-none">
-                      <TableCell className="pl-8 py-5">
+                    <TableRow key={log.id} className={`group hover:bg-slate-50/50 transition-all border-b border-slate-50 last:border-none ${isSelected ? "bg-blue-50/30" : ""}`}>
+                      <TableCell className="pl-6 py-5 w-10">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelectOne(log.id)}
+                          className="h-4 w-4 rounded border-slate-300 accent-blue-600 cursor-pointer"
+                        />
+                      </TableCell>
+                      <TableCell className="pl-2 py-5">
                         <div className="flex items-center gap-4">
                           <div className="h-10 w-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-white group-hover:border-blue-100 group-hover:text-blue-600 transition-all shadow-sm">
                             <User className="h-5 w-5" />
@@ -551,6 +652,34 @@ export default function SalesPage() {
             </div>
           )}
         </Card>
+      )}
+
+      {/* Bulk Action Floating Bar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 px-5 py-3 bg-slate-900 text-white rounded-2xl shadow-2xl border border-slate-700 animate-in slide-in-from-bottom-4">
+          {bulkLoading ? (
+            <Loader2 className="h-4 w-4 animate-spin text-slate-300" />
+          ) : (
+            <span className="text-sm font-semibold">{selectedIds.size} selected</span>
+          )}
+          <div className="h-4 w-px bg-slate-600" />
+          {isManager && (
+            <Button size="sm" disabled={bulkLoading} className="h-8 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold" onClick={handleBulkApprove}>
+              Approve All
+            </Button>
+          )}
+          {isManager && (
+            <Button size="sm" variant="outline" disabled={bulkLoading} className="h-8 border-slate-600 text-white hover:bg-slate-800 rounded-lg text-xs font-semibold" onClick={handleBulkReject}>
+              Reject All
+            </Button>
+          )}
+          <Button size="sm" variant="outline" disabled={bulkLoading} className="h-8 border-slate-600 text-white hover:bg-slate-800 rounded-lg text-xs font-semibold" onClick={handleBulkExport}>
+            Export
+          </Button>
+          <button onClick={() => setSelectedIds(new Set())} className="text-slate-400 hover:text-white ml-1">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
       )}
 
       {/* Detail Overlay */}

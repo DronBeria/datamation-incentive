@@ -24,9 +24,11 @@ import {
   Settings,
   Calendar,
   Target,
+  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SyncStatusIcon } from "@/components/ui/sync-status";
+import { CommandPalette } from "@/components/command-palette";
 
 const NAV_ITEMS: Record<string, { label: string; href: string; icon: any; roles: string[] }[]> = {
   main: [
@@ -41,6 +43,7 @@ const NAV_ITEMS: Record<string, { label: string; href: string; icon: any; roles:
     { label: "Team Management", href: "/dashboard/users", icon: Users, roles: ["admin", "manager"] },
     { label: "Commission Rules", href: "/dashboard/schemes", icon: Zap, roles: ["admin", "manager"] },
     { label: "System Audit", href: "/dashboard/audit", icon: ClipboardList, roles: ["admin"] },
+    { label: "Settings", href: "/dashboard/settings", icon: Settings, roles: ["admin"] },
   ],
 };
 
@@ -57,12 +60,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [cmdOpen, setCmdOpen] = useState(false);
   // React Query polls every 30 s — no manual fetch needed
   const unreadCount = useUnreadCount();
 
   useEffect(() => {
     if (!loading && !user) router.push("/");
   }, [user, loading, router]);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setCmdOpen((v) => !v);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   if (loading || !user) {
     return (
@@ -193,6 +208,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           <div className="flex items-center gap-3">
             <SyncStatusIcon />
+            <button onClick={() => setCmdOpen(true)} className="h-9 w-9 rounded-lg hover:bg-slate-50 flex items-center justify-center transition-colors border border-slate-100 hidden sm:flex">
+              <Search className="h-4 w-4 text-slate-400" />
+            </button>
             <Link href="/dashboard/notifications" className="relative h-9 w-9 rounded-lg hover:bg-slate-50 flex items-center justify-center transition-colors border border-slate-100">
               <Bell className="h-4 w-4 text-slate-400" />
               {unreadCount > 0 && (
@@ -235,6 +253,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </main>
       </div>
+      <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} userRole={user.role} />
     </div>
   );
 }

@@ -28,7 +28,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { useBatches, useInvalidateBatches, QUERY_KEYS } from "@/lib/hooks";
 import { DateRangePicker } from "@/components/date-range-picker";
-import { downloadCSV, exportToExcel, exportToPDF, downloadPDF } from "@/lib/export-utils";
+import { downloadCSV, exportToExcel, exportToPDF, downloadPDF, exportToTallyXML, exportToQuickBooksIIF } from "@/lib/export-utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 // ── Status config ─────────────────────────────────────────────────
@@ -237,7 +237,7 @@ function BatchDetailModal({ batch, onClose, user, onAction, actionLoading }: any
                   <Download className="h-3.5 w-3.5 mr-2" /> Export
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-40 p-1 rounded-xl shadow-lg border border-slate-100 bg-white">
+              <DropdownMenuContent align="start" className="w-52 p-1 rounded-xl shadow-lg border border-slate-100 bg-white">
                 <DropdownMenuItem onClick={() => exportToExcel(batch.items || [], `batch_${batch.reference_number || batch.id}`, [
                   { key: "salesperson_name", label: "Beneficiary" },
                   { key: "client_name", label: "Client / Description" },
@@ -256,6 +256,39 @@ function BatchDetailModal({ batch, onClose, user, onAction, actionLoading }: any
                 }])} className="h-10 rounded-lg text-xs font-medium text-slate-600 cursor-pointer focus:bg-slate-50">
                   PDF Document
                 </DropdownMenuItem>
+                {/* Accounting software exports — only for paid batches */}
+                {batch.status === "paid" && (
+                  <>
+                    <div className="my-1 h-px bg-slate-100 mx-2" />
+                    <div className="px-2 py-1">
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Accounting Software</p>
+                    </div>
+                    <DropdownMenuItem
+                      onClick={() => exportToTallyXML(
+                        batch.batch_name,
+                        batch.reference_number || String(batch.id),
+                        batch.paid_at ? batch.paid_at.split("T")[0] : new Date().toISOString().split("T")[0],
+                        (batch.items || []).map((i: any) => ({ salesperson_name: i.salesperson_name, amount: i.amount }))
+                      )}
+                      className="h-10 rounded-lg text-xs font-semibold text-emerald-700 bg-emerald-50/50 cursor-pointer focus:bg-emerald-50 flex items-center gap-2"
+                    >
+                      <span className="text-[10px] font-black bg-emerald-600 text-white px-1.5 py-0.5 rounded">T</span>
+                      Tally XML
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => exportToQuickBooksIIF(
+                        batch.batch_name,
+                        batch.reference_number || String(batch.id),
+                        batch.paid_at ? batch.paid_at.split("T")[0] : new Date().toISOString().split("T")[0],
+                        (batch.items || []).map((i: any) => ({ salesperson_name: i.salesperson_name, amount: i.amount }))
+                      )}
+                      className="h-10 rounded-lg text-xs font-semibold text-blue-700 bg-blue-50/50 cursor-pointer focus:bg-blue-50 flex items-center gap-2"
+                    >
+                      <span className="text-[10px] font-black bg-blue-600 text-white px-1.5 py-0.5 rounded">QB</span>
+                      QuickBooks IIF
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
             {batch.status === "draft" && (

@@ -148,3 +148,113 @@ export function downloadPDF(title: string, tables: { heading: string; columns: {
     setTimeout(() => win.print(), 500);
   }
 }
+
+// ─── TALLY XML EXPORT (8.3) ──────────────────────────────────────────────────
+/**
+ * Export a paid batch as Tally-compatible XML vouchers.
+ * Each salesperson gets a separate Payment voucher entry.
+ *
+ * @param batchName  Batch name shown in Tally narration
+ * @param batchRef   Reference number
+ * @param paidDate   Date of payment (YYYY-MM-DD)
+ * @param items      Batch items with salesperson_name and amount
+ */
+export function exportToTallyXML(
+  batchName: string,
+  batchRef: string,
+  paidDate: string,
+  items: { salesperson_name: string; amount: number }[]
+) {
+  const dateFormatted = paidDate.replace(/-/g, ""); // YYYYMMDD for Tally
+
+  const vouchers = items.map((item, idx) => `
+    <TALLYMESSAGE xmlns:UDF="TallyUDF">
+      <VOUCHER REMOTEID="${batchRef}-${idx + 1}" VCHTYPE="Payment" ACTION="Create">
+        <DATE>${dateFormatted}</DATE>
+        <VOUCHERTYPENAME>Payment</VOUCHERTYPENAME>
+        <VOUCHERNUMBER>${batchRef}-${idx + 1}</VOUCHERNUMBER>
+        <NARRATION>Commission payment to ${item.salesperson_name} | ${batchName} | Ref: ${batchRef}</NARRATION>
+        <ALLLEDGERENTRIES.LIST>
+          <LEDGERNAME>Commission Expense</LEDGERNAME>
+          <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
+          <AMOUNT>-${item.amount.toFixed(2)}</AMOUNT>
+        </ALLLEDGERENTRIES.LIST>
+        <ALLLEDGERENTRIES.LIST>
+          <LEDGERNAME>Cash / Bank</LEDGERNAME>
+          <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+          <AMOUNT>${item.amount.toFixed(2)}</AMOUNT>
+        </ALLLEDGERENTRIES.LIST>
+      </VOUCHER>
+    </TALLYMESSAGE>`).join("\n");
+
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<ENVELOPE>
+  <HEADER>
+    <TALLYREQUEST>Import Data</TALLYREQUEST>
+  </HEADER>
+  <BODY>
+    <IMPORTDATA>
+      <REQUESTDESC>
+        <REPORTNAME>Vouchers</REPORTNAME>
+        <STATICVARIABLES>
+          <SVCURRENTCOMPANY>##SVCURRENTCOMPANY</SVCURRENTCOMPANY>
+        </STATICVARIABLES>
+      </REQUESTDESC>
+      <REQUESTDATA>${vouchers}
+      </REQUESTDATA>
+    </IMPORTDATA>
+  </BODY>
+</ENVELOPE>`;
+
+  const blob = new Blob([xml], { type: "application/xml;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `tally_${batchRef}_${paidDate}.xml`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+// ─── QUICKBOOKS IIF EXPORT (8.3) ─────────────────────────────────────────────
+/**
+ * Export a paid batch as QuickBooks IIF (Interchange File Format).
+ * Creates a GENERAL JOURNAL entry debiting Commission Expense and
+ * crediting the Bank/Cash account for each payee.
+ */
+export function exportToQuickBooksIIF(
+  batchName: string,
+  batchRef: string,
+  paidDate: string,
+  items: { salesperson_name: string; amount: number }[]
+) {
+  // IIF date format: MM/DD/YY
+  const [y, m, d] = paidDate.split("-");
+  const iifDate = `${m}/${d}/${y.slice(2)}`;
+
+  const lines: string[] = [
+    "!TRNS\tTRNSTYPE\tDATE\tACCNT\tNAME\tAMOUNT\tMEMO\tCLEAR",
+    "!SPL\tTRNSTYPE\tDATE\tACCNT\tNAME\tAMOUNT\tMEMO",
+    "!ENDTRNS",
+  ];
+
+  items.forEach((item, idx) => {
+    const memo = `${batchName} | Ref: ${batchRef}`;
+    lines.push(`TRNS\tGENJRNL\t${iifDate}\tCommission Expense\t${item.salesperson_name}\t${(-item.amount).toFixed(2)}\t${memo}\tN`);
+    lines.push(`SPL\tGENJRNL\t${iifDate}\tBank Account\t${item.salesperson_name}\t${item.amount.toFixed(2)}\t${memo}`);
+    lines.push("ENDTRNS");
+    if (idx < items.length - 1) lines.push("");
+  });
+
+  const iif = lines.join("\r\n");
+  const blob = new Blob([iif], { type: "text/plain;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `qb_${batchRef}_${paidDate}.iif`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
