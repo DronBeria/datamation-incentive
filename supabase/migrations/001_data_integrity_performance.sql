@@ -7,6 +7,23 @@
 -- ============================================================
 
 -- ────────────────────────────────────────────────────────────
+-- 0. ENSURE REQUIRED COLUMNS EXIST ON incentive_batches
+-- These may or may not already exist depending on your schema
+-- version. All are safe to run multiple times.
+-- ────────────────────────────────────────────────────────────
+ALTER TABLE public.incentive_batches
+  ADD COLUMN IF NOT EXISTS period_start   DATE             DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS period_end     DATE             DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS submitted_at   TIMESTAMPTZ      DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS approved_by    UUID             DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS approved_at    TIMESTAMPTZ      DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS paid_at        TIMESTAMPTZ      DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS paid_by        UUID             DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS rejection_reason TEXT           DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS reference_number TEXT           DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS updated_at     TIMESTAMPTZ      DEFAULT NOW();
+
+-- ────────────────────────────────────────────────────────────
 -- 1. SOFT DELETES
 -- ────────────────────────────────────────────────────────────
 ALTER TABLE public.incentive_batches
